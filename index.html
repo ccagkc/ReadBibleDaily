@@ -161,11 +161,6 @@
                         
                         const app = appModule.initializeApp(firebaseConfig);
                         const auth = authModule.getAuth(app);
-                        
-                        // 💡 專家優化任務 2：強制設定「本機持久化登入」
-                        // 確保關閉瀏覽器或重開機後，下次打開網頁依舊保持自動登入狀態
-                        await authModule.setPersistence(auth, authModule.browserLocalPersistence);
-                        
                         const db = dbModule.getFirestore(app);
                         const appId = 'kcc-bible-app'; 
                 
@@ -179,7 +174,7 @@
                             }
                         }, (err) => console.warn("等待設定檔授權中:", err.message));
                 
-                        // 監聽使用者登入狀態
+                        // 💡 專家修復：移除會導致崩潰的 setPersistence，恢復原廠穩定的監聽器
                         unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
                             if (unsubscribeProfile.current) unsubscribeProfile.current();
                             if (unsubscribeProgress.current) unsubscribeProgress.current();
@@ -205,7 +200,7 @@
                                     if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
                                 }, (err) => console.warn("等待 Progress 權限同步:", err.message));
                             } else {
-                                // 💡 專家優化任務 1：登出時徹底重置所有前端狀態
+                                // 登出時徹底重置所有前端狀態
                                 setCurrentUser(null);
                                 setUserProfile(null);
                                 setCompleted([]); // 強制清空月曆上的已讀標籤
@@ -214,7 +209,7 @@
                         });
                 
                     } catch (e) {
-                        console.error("Firebase 模組載入失敗", e);
+                        console.error("Firebase 模組載入失敗:", e);
                     }
                 };
                                 
@@ -449,10 +444,13 @@
                         setShowAdminLogin(false);
                         setView('admin-dashboard'); 
                     } catch (err) {
+                        // 💡 專家優化：更精準的防呆錯誤提示
                         if (err.code === 'auth/email-already-in-use') {
                             setErrorMsg("管理員已存在，請取消勾選「首次使用」直接登入");
+                        } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+                            setErrorMsg(isRegister ? "設定失敗 (密碼需至少6個字元)" : "登入失敗 (若是剛重置系統，請勾選下方選項重新建立帳號)");
                         } else {
-                            setErrorMsg(isRegister ? "設定失敗 (密碼需至少6個字元)" : "登入失敗 (密碼錯誤)");
+                            setErrorMsg(err.message);
                         }
                     } finally {
                         setLoading(false);
