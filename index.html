@@ -804,7 +804,14 @@
                                                 {userProfile?.role === 'admin' && view !== 'admin-dashboard' && (
                                                     <button onClick={()=>setView('admin-dashboard')} className="w-full text-left px-4 py-3 text-sm text-theme-700 hover:bg-theme-50 font-bold border-b"><i className="fa-solid fa-server mr-2"></i> 進入後台</button>
                                                 )}
-                                                <button onClick={()=>{ setView('calendar'); fb.authModule.signOut(fb.auth); }} className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl font-bold"><i className="fa-solid fa-arrow-right-from-bracket mr-2"></i> 登出帳號</button>
+                                               <button onClick={()=>{ 
+                                                    // 💡 專家優化：在點擊登出的「瞬間」立刻同步清空所有前端狀態，切斷時間差
+                                                    setCompleted([]); 
+                                                    setCurrentUser(null);
+                                                    setUserProfile(null);
+                                                    setView('calendar'); 
+                                                    fb.authModule.signOut(fb.auth); 
+                                                }} className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-b-xl font-bold"><i className="fa-solid fa-arrow-right-from-bracket mr-2"></i> 登出帳號</button>
                                             </div>
                                         </div>
                                     ) : (
