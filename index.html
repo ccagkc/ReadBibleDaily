@@ -148,7 +148,7 @@
                         const appModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
                         const authModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
                         const dbModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-
+                
                         const firebaseConfig = {
                             apiKey: "AIzaSyAEMB-eVojfzcUMyKt9JgGK_okPRO2V73g",
                             authDomain: "ccagkc-biblereading-project.firebaseapp.com",
@@ -163,20 +163,25 @@
                         const auth = authModule.getAuth(app);
                         const db = dbModule.getFirestore(app);
                         const appId = 'kcc-bible-app'; 
-
+                
                         setFb({ auth, db, appId, authModule, dbModule });
-
+                
+                        // 💡 專家修正：這段已合併並清理，確保只有一個 settingsRef
                         const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
                         unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
-                            if (snap.exists()) setAppSettings(snap.data());
-                            else dbModule.setDoc(settingsRef, { groups: ['長者區', '職青區', '青少區', '兒童區'] });
-                        }, (err) => console.warn("設定檔讀取等待授權或失敗:", err.message)); // 🛡️ 優雅攔截
-
+                            if (snap.exists()) {
+                                setAppSettings(snap.data());
+                            } else {
+                                // 前端暫存預設值，不寫入雲端避免權限衝突
+                                setAppSettings({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
+                            }
+                        }, (err) => console.warn("等待設定檔授權中:", err.message));
+                
                         unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
-                            // 🛡️ 專家防護：切換使用者前，先完整切斷舊有監聽，防止記憶體洩漏
+                            // 切換帳號時，先清理舊連線
                             if (unsubscribeProfile.current) unsubscribeProfile.current();
                             if (unsubscribeProgress.current) unsubscribeProgress.current();
-
+                
                             if (user) {
                                 setCurrentUser(user);
                                 
@@ -190,7 +195,7 @@
                                         }
                                     }
                                 }, (err) => console.warn("等待 Profile 權限同步:", err.message));
-
+                
                                 const progressRef = dbModule.doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'progress');
                                 unsubscribeProgress.current = dbModule.onSnapshot(progressRef, (docSnap) => {
                                     if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
@@ -201,7 +206,7 @@
                                 setView('calendar'); 
                             }
                         });
-
+                
                     } catch (e) {
                         console.error("Firebase 模組載入失敗", e);
                     }
