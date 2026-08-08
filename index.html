@@ -179,20 +179,26 @@
                 
                         unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
                             // 切換帳號時，先清理舊連線
+                            unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
+            
                             if (unsubscribeProfile.current) unsubscribeProfile.current();
                             if (unsubscribeProgress.current) unsubscribeProgress.current();
                 
                             if (user) {
                                 setCurrentUser(user);
                                 
+                                // 💡 專家防護：判定為管理員網域時，網頁重整能自動引導至後台
+                                if (user.email.endsWith(SITE_CONFIG.adminEmailDomain) && view !== 'admin-dashboard') {
+                                    setView('admin-dashboard');
+                                }
+                                
                                 const profileRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'userProfiles', user.uid);
                                 unsubscribeProfile.current = dbModule.onSnapshot(profileRef, (snap) => {
                                     if (snap.exists()) {
-                                        const profileData = snap.data();
-                                        setUserProfile(profileData);
-                                        if (profileData.role === 'admin' && view !== 'admin-dashboard') {
-                                            setView('admin-dashboard');
-                                        }
+                                        setUserProfile(snap.data());
+                                    } else if (user.email.endsWith(SITE_CONFIG.adminEmailDomain)) {
+                                        // 極端備援狀態：確保畫面不會被卡在月曆
+                                        setUserProfile({ username: user.email.split('@')[0], role: 'admin' });
                                     }
                                 }, (err) => console.warn("等待 Profile 權限同步:", err.message));
                 
@@ -432,11 +438,22 @@
                             const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
                             await fb.dbModule.setDoc(profileRef, { username: adminId, role: 'admin', createdAt: new Date().toISOString() });
                         } else {
-                            await fb.authModule.signInWithEmailAndPassword(fb.auth, adminEmail, password);
+                            const cred = await fb.authModule.signInWithEmailAndPassword(fb.auth, adminEmail, password);
+                            // 🛡️ 專家防護：自我修復機制 (若之前註冊因安全規則失敗，在此自動補建 Profile)
+                            const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
+                            const snap = await fb.dbModule.getDoc(profileRef);
+                            if (!snap.exists()) {
+                                await fb.dbModule.setDoc(profileRef, { username: adminId, role: 'admin', createdAt: new Date().toISOString() });
+                            }
                         }
                         setShowAdminLogin(false);
+                        setView('admin-dashboard'); // 💡 專家優化：登入成功後，立刻明確下達切換至後台指令
                     } catch (err) {
-                        setErrorMsg(isRegister ? "註冊失敗，密碼需至少6位數" : "登入失敗，帳號或密碼錯誤");
+                        if (err.code === 'auth/email-already-in-use') {
+                            setErrorMsg("帳號已存在，請取消勾選「建立帳號」直接登入");
+                        } else {
+                            setErrorMsg(isRegister ? "註冊失敗 (密碼需至少6位碼)" : "登入失敗 (帳號或密碼錯誤)");
+                        }
                     } finally {
                         setLoading(false);
                     }
