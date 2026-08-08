@@ -413,7 +413,7 @@
             };
 
             const AdminLoginModal = () => {
-                const [adminId, setAdminId] = useState('');
+                // 💡 專家優化：移除了 adminId 狀態，極簡化架構
                 const [password, setPassword] = useState('');
                 const [isRegister, setIsRegister] = useState(false);
                 const [errorMsg, setErrorMsg] = useState('');
@@ -425,34 +425,66 @@
                     e.preventDefault();
                     setLoading(true);
                     setErrorMsg('');
-                    const adminEmail = `${adminId.trim()}${SITE_CONFIG.adminEmailDomain}`;
+                    // 💡 專家優化：在底層自動綁定固定唯一的管理員 Email
+                    const adminEmail = `admin${SITE_CONFIG.adminEmailDomain}`;
                     
                     try {
                         if (isRegister) {
                             const cred = await fb.authModule.createUserWithEmailAndPassword(fb.auth, adminEmail, password);
                             const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
-                            await fb.dbModule.setDoc(profileRef, { username: adminId, role: 'admin', createdAt: new Date().toISOString() });
+                            // 固定名稱為「系統管理員」
+                            await fb.dbModule.setDoc(profileRef, { username: '系統管理員', role: 'admin', createdAt: new Date().toISOString() });
                         } else {
                             const cred = await fb.authModule.signInWithEmailAndPassword(fb.auth, adminEmail, password);
-                            // 🛡️ 專家防護：自我修復機制 (若之前註冊因安全規則失敗，在此自動補建 Profile)
+                            // 🛡️ 專家防護：自我修復機制
                             const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
                             const snap = await fb.dbModule.getDoc(profileRef);
                             if (!snap.exists()) {
-                                await fb.dbModule.setDoc(profileRef, { username: adminId, role: 'admin', createdAt: new Date().toISOString() });
+                                await fb.dbModule.setDoc(profileRef, { username: '系統管理員', role: 'admin', createdAt: new Date().toISOString() });
                             }
                         }
                         setShowAdminLogin(false);
-                        setView('admin-dashboard'); // 💡 專家優化：登入成功後，立刻明確下達切換至後台指令
+                        setView('admin-dashboard'); 
                     } catch (err) {
                         if (err.code === 'auth/email-already-in-use') {
-                            setErrorMsg("帳號已存在，請取消勾選「建立帳號」直接登入");
+                            setErrorMsg("管理員已存在，請取消勾選「首次設定」直接登入");
                         } else {
-                            setErrorMsg(isRegister ? "註冊失敗 (密碼需至少6位碼)" : "登入失敗 (帳號或密碼錯誤)");
+                            setErrorMsg(isRegister ? "設定失敗 (密碼需至少6個字元)" : "登入失敗 (密碼錯誤)");
                         }
                     } finally {
                         setLoading(false);
                     }
                 };
+
+                return (
+                    <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-[1.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-fade-in">
+                            <div className="bg-gray-800 p-5 text-white flex justify-between items-center">
+                                <h3 className="font-bold flex items-center"><i className="fa-solid fa-shield-halved mr-2 text-theme-300"></i> 管理員安全登入</h3>
+                                <button onClick={() => setShowAdminLogin(false)} className="text-gray-400 hover:text-white transition"><i className="fa-solid fa-xmark text-lg"></i></button>
+                            </div>
+                            <form onSubmit={handleAdminAuth} className="p-6 md:p-8 space-y-5">
+                                {errorMsg && <div className="text-red-500 text-sm bg-red-50 p-3 rounded-xl border border-red-100"><i className="fa-solid fa-triangle-exclamation mr-1"></i> {errorMsg}</div>}
+                                
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">請輸入管理員密碼</label>
+                                    {/* 💡 專家優化：加入 autoFocus、tracking-widest(拉寬字距) 與現代感的光暈效果(focus:ring) */}
+                                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-theme-500 focus:ring-4 focus:ring-theme-100 transition text-xl tracking-widest text-center font-bold" required autoFocus />
+                                </div>
+                                
+                                <div className="flex items-center justify-center mt-2">
+                                    <input type="checkbox" id="regAdmin" checked={isRegister} onChange={(e) => setIsRegister(e.target.checked)} className="mr-2 w-4 h-4 text-theme-600 rounded border-gray-300" />
+                                    <label htmlFor="regAdmin" className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 transition">首次使用 (建立管理員密碼)</label>
+                                </div>
+                                
+                                <button type="submit" disabled={loading} className="w-full bg-gray-800 text-white font-bold py-4 rounded-xl hover:bg-gray-700 transition-all active:scale-95 shadow-md text-lg">
+                                    {loading ? <i className="fa-solid fa-spinner fa-spin"></i> : (isRegister ? '設定新密碼' : '安全登入')}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
 
                 return (
                     <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
