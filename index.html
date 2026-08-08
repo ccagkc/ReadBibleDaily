@@ -413,7 +413,6 @@
             };
 
             const AdminLoginModal = () => {
-                // 💡 專家優化：移除了 adminId 狀態，極簡化架構
                 const [password, setPassword] = useState('');
                 const [isRegister, setIsRegister] = useState(false);
                 const [errorMsg, setErrorMsg] = useState('');
@@ -432,7 +431,6 @@
                         if (isRegister) {
                             const cred = await fb.authModule.createUserWithEmailAndPassword(fb.auth, adminEmail, password);
                             const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
-                            // 固定名稱為「系統管理員」
                             await fb.dbModule.setDoc(profileRef, { username: '系統管理員', role: 'admin', createdAt: new Date().toISOString() });
                         } else {
                             const cred = await fb.authModule.signInWithEmailAndPassword(fb.auth, adminEmail, password);
@@ -447,7 +445,7 @@
                         setView('admin-dashboard'); 
                     } catch (err) {
                         if (err.code === 'auth/email-already-in-use') {
-                            setErrorMsg("管理員已存在，請取消勾選「首次設定」直接登入");
+                            setErrorMsg("管理員已存在，請取消勾選「首次使用」直接登入");
                         } else {
                             setErrorMsg(isRegister ? "設定失敗 (密碼需至少6個字元)" : "登入失敗 (密碼錯誤)");
                         }
@@ -468,7 +466,6 @@
                                 
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">請輸入管理員密碼</label>
-                                    {/* 💡 專家優化：加入 autoFocus、tracking-widest(拉寬字距) 與現代感的光暈效果(focus:ring) */}
                                     <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-theme-500 focus:ring-4 focus:ring-theme-100 transition text-xl tracking-widest text-center font-bold" required autoFocus />
                                 </div>
                                 
@@ -485,37 +482,7 @@
                     </div>
                 );
             };
-
-                return (
-                    <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-                            <div className="bg-gray-800 p-5 text-white flex justify-between items-center">
-                                <h3 className="font-bold flex items-center"><i className="fa-solid fa-shield-halved mr-2 text-theme-300"></i> 管理員登入</h3>
-                                <button onClick={() => setShowAdminLogin(false)} className="text-gray-400 hover:text-white"><i className="fa-solid fa-xmark"></i></button>
-                            </div>
-                            <form onSubmit={handleAdminAuth} className="p-6 space-y-4">
-                                {errorMsg && <div className="text-red-500 text-sm bg-red-50 p-2 rounded">{errorMsg}</div>}
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">管理員帳號</label>
-                                    <input type="text" value={adminId} onChange={e=>setAdminId(e.target.value)} className="w-full p-3 bg-gray-50 border rounded-lg" required />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">管理員密碼</label>
-                                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-3 bg-gray-50 border rounded-lg" required />
-                                </div>
-                                <div className="flex items-center mt-2">
-                                    <input type="checkbox" id="regAdmin" checked={isRegister} onChange={(e) => setIsRegister(e.target.checked)} className="mr-2" />
-                                    <label htmlFor="regAdmin" className="text-xs text-gray-500">這是我第一次設定管理員 (建立帳號)</label>
-                                </div>
-                                <button type="submit" disabled={loading} className="w-full bg-gray-800 text-white font-bold py-3 rounded-lg hover:bg-gray-700">
-                                    {loading ? '處理中...' : (isRegister ? '建立管理員' : '安全登入')}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                );
-            };
-
+            
             const AdminDashboard = () => {
                 const [activeTab, setActiveTab] = useState('stats'); 
                 const [newGroup, setNewGroup] = useState('');
