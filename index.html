@@ -204,6 +204,7 @@
                                             } else {
                                                 setCurrentUser(null);
                                                 setUserProfile(null);
+                                                setCompleted([]); // 💡 專家優化：登出時強制清空記憶體中的已讀紀錄
                                                 setView('calendar'); 
                                             }
                                         });
