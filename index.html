@@ -116,20 +116,24 @@
         };
 
         const App = () => {
-            const [view, setView] = useState('calendar'); 
+            // UI 狀態
+            const [view, setView] = useState('calendar'); // calendar, reader, admin-dashboard
             const [selectedDate, setSelectedDate] = useState(null);
             const [currentViewMonth, setCurrentViewMonth] = useState(new Date()); 
             const [showAnswer, setShowAnswer] = useState(false);
             
+            // 資料狀態
             const [data, setData] = useState({}); 
             const [validDates, setValidDates] = useState([]); 
             const [completed, setCompleted] = useState([]);
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
 
+            // 系統設定與管理狀態
             const [appSettings, setAppSettings] = useState({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
             const [userProfile, setUserProfile] = useState(null);
             
+            // Firebase 狀態
             const [fb, setFb] = useState(null);
             const [currentUser, setCurrentUser] = useState(null);
             const [showAuthModal, setShowAuthModal] = useState(false);
@@ -141,14 +145,13 @@
             let unsubscribeProfile = useRef(null);
 
             useEffect(() => {
-                let unsubscribeAuth = null; // 🛡️ 專家防護：儲存 Auth 監聽器以便清理
-
                 const initFirebase = async () => {
                     try {
                         const appModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
                         const authModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
                         const dbModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
 
+                        // ▼▼▼ 請替換成你真實的 Firebase Config ▼▼▼
                         const firebaseConfig = {
                             apiKey: "AIzaSyAEMB-eVojfzcUMyKt9JgGK_okPRO2V73g",
                             authDomain: "ccagkc-biblereading-project.firebaseapp.com",
@@ -166,39 +169,62 @@
 
                         setFb({ auth, db, appId, authModule, dbModule });
 
+			// 監聽全局設定 (小組列表)
+			const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
+			unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
+    			    if (snap.exists()) {
+        			setAppSettings(snap.data());
+    			     } else {
+        			// 💡 專家修正：千萬不要在這裡執行 setDoc！這會引發無限權限報錯迴圈。
+        			// 只要在前端套用預設值即可，實際的雲端寫入應由「管理員」在後台介面新增。
+        			setAppSettings({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
+    			     }
+			}, (err) => console.warn("等待設定檔授權中:", err.message));
+
+                        // 監聽全局設定 (小組列表)
                         const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
                         unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
                             if (snap.exists()) setAppSettings(snap.data());
-                            else dbModule.setDoc(settingsRef, { groups: ['長者區', '職青區', '青少區', '兒童區'] });
-                        }, (err) => console.warn("設定檔讀取等待授權或失敗:", err.message)); // 🛡️ 優雅攔截
+                            else {
+                                // 初始化預設小組
+                                dbModule.setDoc(settingsRef, { groups: ['長者區', '職青區', '青少區', '兒童區'] });
+                            }
+                        }, (err) => console.error("設定檔讀取失敗"));
 
-                        unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
-                            // 🛡️ 專家防護：切換使用者前，先完整切斷舊有監聽，防止記憶體洩漏
-                            if (unsubscribeProfile.current) unsubscribeProfile.current();
-                            if (unsubscribeProgress.current) unsubscribeProgress.current();
 
+
+
+                        // 監聽登入狀態
+                        authModule.onAuthStateChanged(auth, (user) => {
                             if (user) {
                                 setCurrentUser(user);
                                 
+                                // 監聽用戶個人資料 (Profile - 用於判斷管理員權限與小組)
                                 const profileRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'userProfiles', user.uid);
                                 unsubscribeProfile.current = dbModule.onSnapshot(profileRef, (snap) => {
                                     if (snap.exists()) {
                                         const profileData = snap.data();
                                         setUserProfile(profileData);
+                                        // 如果是管理員，登入後自動切換到後台
                                         if (profileData.role === 'admin' && view !== 'admin-dashboard') {
                                             setView('admin-dashboard');
                                         }
                                     }
-                                }, (err) => console.warn("等待 Profile 權限同步:", err.message));
+                                });
 
+                                // 監聽用戶讀經進度
                                 const progressRef = dbModule.doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'progress');
                                 unsubscribeProgress.current = dbModule.onSnapshot(progressRef, (docSnap) => {
-                                    if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
-                                }, (err) => console.warn("等待 Progress 權限同步:", err.message));
+                                    if (docSnap.exists()) {
+                                        setCompleted(docSnap.data().completedDates || []);
+                                    }
+                                });
                             } else {
                                 setCurrentUser(null);
                                 setUserProfile(null);
-                                setView('calendar'); 
+                                setView('calendar'); // 確保登出時強制切回月曆視圖
+                                if (unsubscribeProgress.current) unsubscribeProgress.current();
+                                if (unsubscribeProfile.current) unsubscribeProfile.current();
                             }
                         });
 
@@ -206,12 +232,9 @@
                         console.error("Firebase 模組載入失敗", e);
                     }
                 };
-                
                 initFirebase();
 
-                // 🛡️ 專家防護：React 重新渲染時，徹底清理所有監聽，切斷無限迴圈的可能
                 return () => { 
-                    if (unsubscribeAuth) unsubscribeAuth();
                     if (unsubscribeProgress.current) unsubscribeProgress.current(); 
                     if (unsubscribeSettings.current) unsubscribeSettings.current();
                     if (unsubscribeProfile.current) unsubscribeProfile.current();
@@ -276,14 +299,16 @@
                 const isDone = completed.includes(dateStr);
                 const next = isDone ? completed.filter(x => x !== dateStr) : [...completed, dateStr];
                 
-                setCompleted(next); 
+                setCompleted(next); // 樂觀更新
                 
                 if (currentUser && fb) {
                     setSyncing(true);
                     try {
+                        // 1. 儲存進度列表
                         const progressRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'users', currentUser.uid, 'data', 'progress');
                         await fb.dbModule.setDoc(progressRef, { completedDates: next }, { merge: true });
                         
+                        // 2. 更新使用者統計資料 (為了讓管理員可以快速查詢)
                         const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', currentUser.uid);
                         await fb.dbModule.setDoc(profileRef, { 
                             completedCount: next.length,
@@ -291,7 +316,7 @@
                         }, { merge: true });
 
                     } catch (e) {
-                        console.error("寫入雲端失敗 (請確認權限設定)", e);
+                        console.error("寫入雲端失敗", e);
                     } finally {
                         setSyncing(false);
                     }
@@ -320,19 +345,23 @@
 
                     try {
                         if (step === 1) {
+                            // 嘗試登入
                             try {
                                 await fb.authModule.signInWithEmailAndPassword(fb.auth, fakeEmail, FIXED_PASS);
-                                setShowAuthModal(false); 
+                                setShowAuthModal(false); // 成功登入
                             } catch (err) {
+                                // 登入失敗代表是新帳號，進入第二步選小組
                                 setStep(2);
                             }
                         } else if (step === 2) {
+                            // 執行註冊
                             if (!selectedGroup) {
                                 setAuthError('請選擇你所屬的小組');
                                 setProcessing(false);
                                 return;
                             }
                             const cred = await fb.authModule.createUserWithEmailAndPassword(fb.auth, fakeEmail, FIXED_PASS);
+                            // 建立 Profile 供管理員統計用
                             const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
                             await fb.dbModule.setDoc(profileRef, {
                                 username: username.trim(),
@@ -468,14 +497,14 @@
             };
 
             const AdminDashboard = () => {
-                const [activeTab, setActiveTab] = useState('stats'); 
+                const [activeTab, setActiveTab] = useState('stats'); // stats, settings
                 const [newGroup, setNewGroup] = useState('');
                 const [usersList, setUsersList] = useState([]);
                 const [loadingStats, setLoadingStats] = useState(false);
 
+                // 讀取所有使用者資料 (僅抓取 Profile 來做統計，避免大量 Query)
                 useEffect(() => {
-                    // 🛡️ 專家防護：加入 role === 'admin' 檢查，避免非法觸發拉取全體資料
-                    if (activeTab === 'stats' && fb && userProfile?.role === 'admin') {
+                    if (activeTab === 'stats' && fb) {
                         setLoadingStats(true);
                         const fetchUsers = async () => {
                             try {
@@ -484,18 +513,18 @@
                                 const list = [];
                                 snapshot.forEach(doc => {
                                     const data = doc.data();
-                                    if (data.role !== 'admin') list.push(data); 
+                                    if (data.role !== 'admin') list.push(data); // 排除管理員本身
                                 });
                                 setUsersList(list);
                             } catch (e) {
-                                console.error("獲取統計資料失敗 (可能遭安全性規則阻擋):", e.message);
+                                console.error("獲取統計資料失敗", e);
                             } finally {
                                 setLoadingStats(false);
                             }
                         };
                         fetchUsers();
                     }
-                }, [activeTab, fb, userProfile]);
+                }, [activeTab, fb]);
 
                 const handleAddGroup = async () => {
                     if (!newGroup.trim() || appSettings.groups.includes(newGroup.trim())) return;
@@ -512,6 +541,7 @@
                     await fb.dbModule.setDoc(settingsRef, { groups: updated }, { merge: true });
                 };
 
+                // 將使用者依據小組在記憶體中進行分組與排序 (符合 Firebase 最佳實踐)
                 const groupedStats = usersList.reduce((acc, user) => {
                     const group = user.group || '未分類';
                     if (!acc[group]) acc[group] = [];
