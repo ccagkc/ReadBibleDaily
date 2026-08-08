@@ -144,80 +144,75 @@
                 let unsubscribeAuth = null; // 🛡️ 專家防護：儲存 Auth 監聽器以便清理
 
                 const initFirebase = async () => {
-                    try {
-                        const appModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                        const authModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-                        const dbModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-                
-                        const firebaseConfig = {
-                            apiKey: "AIzaSyAEMB-eVojfzcUMyKt9JgGK_okPRO2V73g",
-                            authDomain: "ccagkc-biblereading-project.firebaseapp.com",
-                            databaseURL: "https://ccagkc-biblereading-project-default-rtdb.asia-southeast1.firebasedatabase.app",
-                            projectId: "ccagkc-biblereading-project",
-                            storageBucket: "ccagkc-biblereading-project.firebasestorage.app",
-                            messagingSenderId: "962459311265",
-                            appId: "1:962459311265:web:cbad43a46491a046e5e4e0"
-                        };
-                        
-                        const app = appModule.initializeApp(firebaseConfig);
-                        const auth = authModule.getAuth(app);
-                        const db = dbModule.getFirestore(app);
-                        const appId = 'kcc-bible-app'; 
-                
-                        setFb({ auth, db, appId, authModule, dbModule });
-                
-                        // 💡 專家修正：這段已合併並清理，確保只有一個 settingsRef
-                        const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
-                        unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
-                            if (snap.exists()) {
-                                setAppSettings(snap.data());
-                            } else {
-                                // 前端暫存預設值，不寫入雲端避免權限衝突
-                                setAppSettings({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
-                            }
-                        }, (err) => console.warn("等待設定檔授權中:", err.message));
-                
-                        unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
-                            // 切換帳號時，先清理舊連線
-                            unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
-            
-                            if (unsubscribeProfile.current) unsubscribeProfile.current();
-                            if (unsubscribeProgress.current) unsubscribeProgress.current();
-                
-                            if (user) {
-                                setCurrentUser(user);
+                                    try {
+                                        const appModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                                        const authModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                                        const dbModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                                 
-                                // 💡 專家防護：判定為管理員網域時，網頁重整能自動引導至後台
-                                if (user.email.endsWith(SITE_CONFIG.adminEmailDomain) && view !== 'admin-dashboard') {
-                                    setView('admin-dashboard');
-                                }
+                                        const firebaseConfig = {
+                                            apiKey: "AIzaSyAEMB-eVojfzcUMyKt9JgGK_okPRO2V73g",
+                                            authDomain: "ccagkc-biblereading-project.firebaseapp.com",
+                                            databaseURL: "https://ccagkc-biblereading-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+                                            projectId: "ccagkc-biblereading-project",
+                                            storageBucket: "ccagkc-biblereading-project.firebasestorage.app",
+                                            messagingSenderId: "962459311265",
+                                            appId: "1:962459311265:web:cbad43a46491a046e5e4e0"
+                                        };
+                                        
+                                        const app = appModule.initializeApp(firebaseConfig);
+                                        const auth = authModule.getAuth(app);
+                                        const db = dbModule.getFirestore(app);
+                                        const appId = 'kcc-bible-app'; 
                                 
-                                const profileRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'userProfiles', user.uid);
-                                unsubscribeProfile.current = dbModule.onSnapshot(profileRef, (snap) => {
-                                    if (snap.exists()) {
-                                        setUserProfile(snap.data());
-                                    } else if (user.email.endsWith(SITE_CONFIG.adminEmailDomain)) {
-                                        // 極端備援狀態：確保畫面不會被卡在月曆
-                                        setUserProfile({ username: user.email.split('@')[0], role: 'admin' });
+                                        setFb({ auth, db, appId, authModule, dbModule });
+                                
+                                        // 監聽全局設定 (小組列表)
+                                        const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
+                                        unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
+                                            if (snap.exists()) {
+                                                setAppSettings(snap.data());
+                                            } else {
+                                                setAppSettings({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
+                                            }
+                                        }, (err) => console.warn("等待設定檔授權中:", err.message));
+                                
+                                        // 💡 專家修正：移除重複嵌套的程式碼，確保語法正確閉合
+                                        unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
+                                            if (unsubscribeProfile.current) unsubscribeProfile.current();
+                                            if (unsubscribeProgress.current) unsubscribeProgress.current();
+                                
+                                            if (user) {
+                                                setCurrentUser(user);
+                                                
+                                                if (user.email.endsWith(SITE_CONFIG.adminEmailDomain) && view !== 'admin-dashboard') {
+                                                    setView('admin-dashboard');
+                                                }
+                                                
+                                                const profileRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'userProfiles', user.uid);
+                                                unsubscribeProfile.current = dbModule.onSnapshot(profileRef, (snap) => {
+                                                    if (snap.exists()) {
+                                                        setUserProfile(snap.data());
+                                                    } else if (user.email.endsWith(SITE_CONFIG.adminEmailDomain)) {
+                                                        setUserProfile({ username: user.email.split('@')[0], role: 'admin' });
+                                                    }
+                                                }, (err) => console.warn("等待 Profile 權限同步:", err.message));
+                                
+                                                const progressRef = dbModule.doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'progress');
+                                                unsubscribeProgress.current = dbModule.onSnapshot(progressRef, (docSnap) => {
+                                                    if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
+                                                }, (err) => console.warn("等待 Progress 權限同步:", err.message));
+                                            } else {
+                                                setCurrentUser(null);
+                                                setUserProfile(null);
+                                                setView('calendar'); 
+                                            }
+                                        });
+                                
+                                    } catch (e) {
+                                        console.error("Firebase 模組載入失敗", e);
                                     }
-                                }, (err) => console.warn("等待 Profile 權限同步:", err.message));
-                
-                                const progressRef = dbModule.doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'progress');
-                                unsubscribeProgress.current = dbModule.onSnapshot(progressRef, (docSnap) => {
-                                    if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
-                                }, (err) => console.warn("等待 Progress 權限同步:", err.message));
-                            } else {
-                                setCurrentUser(null);
-                                setUserProfile(null);
-                                setView('calendar'); 
-                            }
-                        });
-                
-                    } catch (e) {
-                        console.error("Firebase 模組載入失敗", e);
-                    }
-                };
-                
+                                };
+                                
                 initFirebase();
 
                 // 🛡️ 專家防護：React 重新渲染時，徹底清理所有監聽，切斷無限迴圈的可能
