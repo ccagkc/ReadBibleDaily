@@ -72,9 +72,9 @@
             SHEET_NAME: 'ReadBible',
             titleLine1: "剛強壯膽 · 踐信力行",
             titleLine2: "葵涌堂 每日讀經計劃",
-            subtitle: "讓神的話語成為我們腳前的燈",
-            description: "同讀聖言行真道 · 隨時隨地靈修",
-            footerText: "© KWAI CHUNG CHURCH · BIBLE READING PORTAL",
+            subtitle: "神的話語是我們腳前的燈、路上的光",
+            description: "同讀聖言行真道 · 聆聽聖靈活新生",
+            footerText: "© CCAGKC · BIBLE READING PORTAL",
             storageKey: "kc-church-bible-progress-v3",
             pseudoEmailDomain: "@kcc.bible.app",
             adminEmailDomain: "@admin.kcc.app"
@@ -127,7 +127,8 @@
             const [loading, setLoading] = useState(true);
             const [error, setError] = useState(null);
 
-            const [appSettings, setAppSettings] = useState({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
+            const [appSettings, setAppSettings] = useState({ groups: ['未入組/其他', '少年崇拜', '奇行組', 'IMA組', '加利利奮青', '彼得組', '隨意行組', '葡萄果組', 
+                                                                      'Spectrum組', '家靈一組', '7-11組', '清心組', 'ReConnect組', '基順ECO組', '蜜組', '喜樂組'] });
             const [userProfile, setUserProfile] = useState(null);
             
             const [fb, setFb] = useState(null);
@@ -172,7 +173,8 @@
                                             if (snap.exists()) {
                                                 setAppSettings(snap.data());
                                             } else {
-                                                setAppSettings({ groups: ['長者區', '職青區', '青少區', '兒童區'] });
+                                                setAppSettings({ groups: ['未入組/其他', '少年崇拜', '奇行組', 'IMA組', '加利利奮青', '彼得組', '隨意行組', '葡萄果組', 
+                                                                      'Spectrum組', '家靈一組', '7-11組', '清心組', 'ReConnect組', '基順ECO組', '蜜組', '喜樂組'] });
                                             }
                                         }, (err) => console.warn("等待設定檔授權中:", err.message));
                                 
@@ -375,26 +377,26 @@
                                 <form onSubmit={handleAction} className="space-y-4">
                                     {step === 1 ? (
                                         <div className="animate-fade-in">
-                                            <label className="block text-sm font-bold text-theme-800 mb-2">輸入你的專屬代號 / 英文名</label>
+                                            <label className="block text-sm font-bold text-theme-800 mb-2">輸入你的個人代號 或 英文簡稱</label>
                                             <input type="text" value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))} placeholder="例如：peter-chan" className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:border-theme-500 bg-gray-50 text-lg" required />
-                                            <p className="text-xs text-gray-500 mt-2"><i className="fa-solid fa-circle-info"></i> 系統會自動辨識，新朋友將引導至下一步選擇小組。</p>
+                                            <p className="text-xs text-gray-500 mt-2"><i className="fa-solid fa-circle-info"></i> 系統自動辨識，首次登記將填寫所屬教會小組。</p>
                                         </div>
                                     ) : (
                                         <div className="animate-fade-in space-y-4">
                                             <div className="bg-theme-50 p-3 rounded-xl border border-theme-100 flex items-center">
                                                 <i className="fa-solid fa-user-tag text-theme-400 mr-3 text-lg"></i>
                                                 <div>
-                                                    <div className="text-xs text-gray-500">正在註冊代號</div>
+                                                    <div className="text-xs text-gray-500">正在註冊個人代號</div>
                                                     <div className="font-bold text-theme-800">{username}</div>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-bold text-theme-800 mb-2">請選擇你所屬的小組/牧區 <span className="text-red-500">*</span></label>
+                                                <label className="block text-sm font-bold text-theme-800 mb-2">請選擇你所屬的小組 <span className="text-red-500">*</span></label>
                                                 <select value={selectedGroup} onChange={e=>setSelectedGroup(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:border-theme-500 bg-gray-50 text-lg" required>
                                                     <option value="" disabled>-- 請選擇小組 --</option>
                                                     {appSettings.groups.map(g => <option key={g} value={g}>{g}</option>)}
                                                 </select>
-                                                <p className="text-xs text-gray-500 mt-2">此資料將協助教會同工統計各區讀經參與度。</p>
+                                                <p className="text-xs text-gray-500 mt-2">此資料將協助教會統計讀經參與情況。</p>
                                             </div>
                                         </div>
                                     )}
