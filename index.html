@@ -688,30 +688,33 @@
                             </button>
                         </div>
 
-                        <div className="glass-panel rounded-[2rem] shadow-soft border border-white overflow-hidden">
-                            <div className="grid grid-cols-7 gap-px bg-theme-100/50">
+                       <div className="glass-panel rounded-[2rem] shadow-soft border border-white overflow-hidden p-1">
+                            {/* 💡 專家優化：使用明確的 border 邊框系統打造高質感日曆格線 */}
+                            <div className="grid grid-cols-7 border-t border-l border-theme-200/60 rounded-xl overflow-hidden">
                                 {['日','一','二','三','四','五','六'].map((day, idx) => (
-                                    <div key={day} className={`text-center py-4 text-sm font-bold bg-white/80 ${idx===0||idx===6 ? 'text-theme-400' : 'text-theme-800'}`}>{day}</div>
+                                    <div key={day} className={`text-center py-4 text-sm font-bold bg-theme-50/80 border-b border-r border-theme-200/60 ${idx===0||idx===6 ? 'text-theme-500' : 'text-theme-800'}`}>{day}</div>
                                 ))}
                                 {grid.map((week, wi) => week.map((dateObj, di) => {
-                                    if (!dateObj) return <div key={`empty-${wi}-${di}`} className="bg-white/40 p-2 md:p-4 min-h-[100px] md:min-h-[120px]"></div>;
+                                    if (!dateObj) return <div key={`empty-${wi}-${di}`} className="bg-white/40 p-2 md:p-4 min-h-[100px] md:min-h-[120px] border-b border-r border-theme-200/60"></div>;
                                     const dateStr = formatDate(dateObj);
                                     const hasPlan = validDates.includes(dateStr);
                                     const isCompleted = completed.includes(dateStr);
                                     const dayData = hasPlan ? data[dateStr] : null;
 
                                     return (
-                                        <div key={dateStr} className={`relative bg-white p-2 md:p-3 min-h-[100px] md:min-h-[130px] flex flex-col transition-all ${hasPlan ? 'cursor-pointer hover:bg-theme-50 ' + (isCompleted ? 'bg-emerald-50/40' : '') : 'cursor-default opacity-60'}`} 
+                                        <div key={dateStr} className={`relative p-2 md:p-3 min-h-[100px] md:min-h-[130px] flex flex-col transition-all border-b border-r border-theme-200/60 ${hasPlan ? 'cursor-pointer hover:bg-theme-50 ' + (isCompleted ? 'bg-emerald-100/70' : 'bg-white') : 'cursor-default bg-gray-50/50 opacity-60'}`} 
                                              onClick={() => { if(hasPlan) { setSelectedDate(dateStr); setView('reader'); setShowAnswer(false); window.scrollTo(0,0); } }}>
                                             <div className="flex justify-between items-start">
-                                                <span className={`text-base md:text-xl font-bold w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full ${dateStr === todayStr ? 'bg-theme-600 text-white shadow-md' : (isCompleted ? 'text-emerald-600' : 'text-gray-600')}`}>
+                                                <span className={`text-base md:text-xl font-bold w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full ${dateStr === todayStr ? 'bg-theme-600 text-white shadow-md' : (isCompleted ? 'text-emerald-700' : 'text-gray-600')}`}>
                                                     {dateObj.getDate()}
                                                 </span>
-                                                {isCompleted && <i className="fa-solid fa-circle-check text-emerald-500 mt-1 md:mt-2"></i>}
+                                                {/* 💡 專家優化：加入 drop-shadow 讓綠色勾勾在深色底上更立體 */}
+                                                {isCompleted && <i className="fa-solid fa-circle-check text-emerald-500 mt-1 md:mt-2 text-lg drop-shadow-sm"></i>}
                                             </div>
                                             {hasPlan && dayData && (
                                                 <div className="mt-auto pt-2">
-                                                    <div className="text-[10px] md:text-xs font-serif font-bold text-theme-700 leading-tight line-clamp-1">{dayData['經卷']} {dayData['章節']}</div>
+                                                    {/* 💡 專家優化：當天完成時，連帶加深經文文字的顏色以維持對比度 */}
+                                                    <div className={`text-[10px] md:text-xs font-serif font-bold leading-tight line-clamp-1 ${isCompleted ? 'text-emerald-800' : 'text-theme-700'}`}>{dayData['經卷']} {dayData['章節']}</div>
                                                 </div>
                                             )}
                                         </div>
