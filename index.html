@@ -722,65 +722,190 @@
             };
 
             const renderReaderView = () => {
-                const currentData = data[selectedDate];
-                if (!currentData) return null;
-                const audioInfo = currentData['語音連結'] ? parseExternalLink(currentData['語音連結'], 'audio') : null;
-                const scriptInfo = currentData['經文'] ? parseExternalLink(currentData['經文'], 'doc') : null;
-                const questionInfo = currentData['問題'] ? parseExternalLink(currentData['問題'], 'doc') : null;
-                const answerInfo = currentData['答案'] ? parseExternalLink(currentData['答案'], 'doc') : null;
+                const currentData = data[selectedDate] || {};
+                if (!currentData || Object.keys(currentData).length === 0) return null;
+
+                // 💡 專家優化：完美移植新版的資料存在判斷邏輯
+                const hasAudio = !!currentData['語音連結'];
+                const hasScripture = !!currentData['經文'];
+                const hasExplanation = !!currentData['釋義'];
+                const hasQuestion = !!currentData['問題'];
+                const hasAnswer = !!currentData['答案'];
+
+                const audioInfo = hasAudio ? parseExternalLink(currentData['語音連結'], 'audio') : null;
+                const scriptInfo = hasScripture ? parseExternalLink(currentData['經文'], 'doc') : null;
+                const questionInfo = hasQuestion ? parseExternalLink(currentData['問題'], 'doc') : null;
+                const answerInfo = hasAnswer ? parseExternalLink(currentData['答案'], 'doc') : null;
+
                 const isCompleted = completed.includes(selectedDate);
                 const currentIndex = validDates.indexOf(selectedDate);
 
                 return (
                     <div className="max-w-3xl mx-auto w-full pb-10 animate-fade-in">
+                        {/* 頂部返回導航 */}
                         <div className="flex justify-between items-center mb-6">
-                            <button onClick={()=>{ setView('calendar'); }} className="glass-panel px-5 py-2.5 rounded-full border border-theme-200 text-theme-700 font-bold hover:bg-theme-100 flex items-center text-sm transition-all"><i className="fa-solid fa-arrow-left-long mr-2"></i> 返回月曆</button>
-                            <div className="glass-panel text-theme-800 font-bold text-sm px-5 py-2.5 rounded-full border border-theme-100">{selectedDate}</div>
+                            <button onClick={()=>{ setView('calendar'); setShowAnswer(false); }} className="bg-white px-4 py-2 rounded-full border border-theme-200 text-theme-700 font-medium hover:bg-theme-50 shadow-sm flex items-center text-sm transition">
+                                <i className="fa-solid fa-chevron-left mr-2"></i> 返回月曆
+                            </button>
+                            <div className="text-gray-500 font-bold text-sm bg-white px-4 py-2 rounded-full shadow-sm border border-theme-50">{selectedDate}</div>
                         </div>
 
-                        <article className="glass-panel rounded-[2rem] border border-white overflow-hidden mb-8">
-                            <div className="bg-gradient-to-br from-theme-800 to-theme-600 text-white p-8 md:p-12 relative overflow-hidden">
-                                <h2 className="text-3xl md:text-5xl font-serif font-bold relative z-10">{currentData['經卷'] ? `${currentData['經卷']} ${currentData['章節']}` : '內容準備中'}</h2>
+                        {/* 內容卡片主體 */}
+                        <article className="bg-white rounded-[2.5rem] shadow-2xl border border-theme-100 overflow-hidden mb-8">
+                            <div className="bg-theme-700 text-white p-8 md:p-10">
+                                <div className="flex items-center space-x-2 text-theme-300 text-sm font-bold tracking-[0.2em] mb-3">
+                                    <i className="fa-solid fa-book-open-reader"></i>
+                                    <span>今日內容</span>
+                                </div>
+                                <h2 className="text-3xl md:text-4xl font-serif font-bold">
+                                    {currentData['經卷'] ? `${currentData['經卷']} ${currentData['章節']}` : '內容準備中'}
+                                </h2>
                             </div>
                             
-                            <div className="p-6 md:p-10 space-y-12 bg-white/50">
+                            <div className="p-6 md:p-10 space-y-12">
+                                {/* 1. 語音朗讀區塊 */}
                                 {audioInfo && (
-                                    <section className="bg-theme-50 rounded-2xl p-4 border flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-theme-600 rounded-full flex items-center justify-center text-white"><i className="fa-solid fa-headphones-simple text-xl"></i></div>
-                                        <div className="flex-grow">
-                                            <h4 className="font-bold text-sm mb-2 text-theme-800">聆聽語音朗讀</h4>
-                                            {audioInfo.type === 'embed' ? <iframe src={audioInfo.url} className="w-full h-14 border-0 rounded-lg"></iframe> : <audio controls className="w-full h-10"><source src={audioInfo.url}/></audio>}
+                                    <section className="bg-theme-50/50 p-6 rounded-3xl border border-theme-100 shadow-inner">
+                                        <h4 className="text-theme-800 font-bold mb-4 flex items-center text-sm">
+                                            <i className="fa-solid fa-circle-play mr-2 text-theme-600"></i> 語音朗讀
+                                        </h4>
+                                        {audioInfo.type === 'embed' ? (
+                                            <iframe src={audioInfo.url} className="w-full h-16 border-0 rounded-xl bg-transparent"></iframe>
+                                        ) : (
+                                            <audio controls className="w-full h-10"><source src={audioInfo.url}/></audio>
+                                        )}
+                                    </section>
+                                )}
+
+                                {/* 2. 聖經經文區塊 */}
+                                {hasScripture && (
+                                    <section>
+                                        <div className="flex justify-between items-end mb-6">
+                                            <h4 className="text-theme-700 font-bold border-l-4 border-theme-500 pl-3">聖經經文</h4>
+                                            {currentData['經文'].includes('http') && (
+                                                <a href={currentData['經文']} target="_blank" className="text-xs text-theme-600 hover:underline font-bold">
+                                                    <i className="fa-solid fa-up-right-from-square mr-1"></i> 全螢幕閱讀
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div className="rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 min-h-[100px]">
+                                            {scriptInfo && scriptInfo.type === 'embed' ? (
+                                                <div className="relative pt-[130%] md:pt-[100%] w-full">
+                                                    <iframe src={scriptInfo.url} className="absolute inset-0 w-full h-full border-0"></iframe>
+                                                </div>
+                                            ) : (
+                                                <div className="p-6 md:p-8 text-lg md:text-xl leading-loose font-serif text-gray-800 whitespace-pre-wrap">
+                                                    {currentData['經文']}
+                                                </div>
+                                            )}
                                         </div>
                                     </section>
                                 )}
-                                {currentData['經文'] && (
+
+                                {/* 3. 經文釋義區塊 */}
+                                {hasExplanation && (
                                     <section>
-                                        <h3 className="text-xl font-bold text-theme-800 flex items-center mb-4"><div className="w-1.5 h-6 bg-theme-500 rounded-full mr-3"></div>聖經經文</h3>
-                                        <div className="bg-white rounded-2xl border p-6 md:p-8 text-lg md:text-xl leading-[2.2] font-serif whitespace-pre-wrap">{currentData['經文']}</div>
+                                        <h4 className="text-theme-700 font-bold mb-4 border-l-4 border-theme-500 pl-3">經文釋義</h4>
+                                        <div className="bg-theme-50/30 p-6 md:p-8 rounded-3xl border border-theme-50 text-gray-600 leading-loose text-base md:text-lg italic font-serif">
+                                            {currentData['釋義']}
+                                        </div>
                                     </section>
                                 )}
-                                {currentData['釋義'] && (
-                                    <section>
-                                        <h3 className="text-xl font-bold text-theme-800 flex items-center mb-4"><div className="w-1.5 h-6 bg-theme-500 rounded-full mr-3"></div>靈修與釋義</h3>
-                                        <div className="bg-gradient-to-br from-theme-50 to-white p-6 md:p-8 rounded-2xl border text-lg font-serif whitespace-pre-wrap">{currentData['釋義']}</div>
+
+                                {/* 4. 查經問題與答案區塊 */}
+                                {hasQuestion && (
+                                    <section className="pt-6 border-t border-dashed border-theme-200">
+                                        <div className="flex justify-between items-end mb-6">
+                                            <h4 className="text-theme-700 font-bold border-l-4 border-theme-500 pl-3">將神的話讀入心</h4>
+                                        </div>
+                                        <div className="rounded-2xl overflow-hidden bg-white border-2 border-theme-100 min-h-[100px]">
+                                            {questionInfo && questionInfo.type === 'embed' ? (
+                                                <div className="relative pt-[130%] md:pt-[100%] w-full">
+                                                    <iframe src={questionInfo.url} className="absolute inset-0 w-full h-full border-0"></iframe>
+                                                </div>
+                                            ) : (
+                                                <div className="p-6 md:p-8 text-lg md:text-xl leading-loose font-serif text-gray-800 whitespace-pre-wrap">
+                                                    {currentData['問題']}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* 展開答案按鈕與內容 */}
+                                        {hasAnswer && (
+                                            <div className="mt-6">
+                                                {!showAnswer ? (
+                                                    <button 
+                                                        onClick={() => setShowAnswer(true)}
+                                                        className="px-6 py-3 bg-theme-100 hover:bg-theme-200 text-theme-700 font-bold rounded-xl transition-all shadow-sm flex items-center w-full md:w-auto justify-center"
+                                                    >
+                                                        <i className="fa-solid fa-lightbulb mr-2"></i> 顯示參考答案
+                                                    </button>
+                                                ) : (
+                                                    <div className="bg-theme-50 border border-theme-200 rounded-2xl p-6 md:p-8 relative mt-4 animate-fade-in">
+                                                        <h4 className="text-theme-700 font-bold mb-4 flex items-center border-b border-theme-200 pb-3">
+                                                            <i className="fa-solid fa-key mr-2"></i> 參考答案
+                                                        </h4>
+                                                        {answerInfo && answerInfo.type === 'embed' ? (
+                                                            <div className="relative pt-[130%] md:pt-[100%] w-full mt-4">
+                                                                <iframe src={answerInfo.url} className="absolute inset-0 w-full h-full border-0 rounded-xl"></iframe>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-lg md:text-xl leading-loose font-serif text-gray-700 whitespace-pre-wrap">
+                                                                {currentData['答案']}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </section>
                                 )}
                             </div>
                         </article>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <button onClick={() => toggleFinish(selectedDate)} className={`md:col-span-1 py-4 rounded-2xl text-lg font-bold flex items-center justify-center border-2 ${isCompleted ? 'bg-emerald-50 text-emerald-600 border-emerald-400' : 'bg-theme-600 text-white border-theme-600 hover:bg-theme-700'}`}>
-                                {syncing ? <i className="fa-solid fa-spinner fa-spin mr-2"></i> : <i className={`fa-solid mr-2 ${isCompleted ? 'fa-circle-check' : 'fa-check'}`}></i>} {isCompleted ? '已完成' : '標記完成'}
+                        {/* 底部進度與切換按鈕 (保留 Firebase Sync 狀態) */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                           <button 
+                                onClick={()=>toggleFinish(selectedDate)}
+                                className={`md:col-span-2 py-5 rounded-2xl text-lg font-bold shadow-xl transition-all active:scale-95 flex items-center justify-center ${
+                                    isCompleted ? 'bg-white text-theme-600 border-2 border-theme-600' : 'bg-theme-600 text-white hover:bg-theme-700'
+                                }`}
+                            >
+                                {syncing ? <i className="fa-solid fa-spinner fa-spin mr-3 text-xl"></i> : <i className={`fa-solid mr-3 text-xl ${isCompleted ? 'fa-check-double' : 'fa-check'}`}></i>}
+                                {isCompleted ? '我已完成今日進度' : '標記今日完成'}
                             </button>
-                            <div className="md:col-span-2 flex gap-3">
-                                <button disabled={currentIndex === 0} onClick={() => setSelectedDate(validDates[currentIndex - 1])} className="flex-1 py-4 rounded-2xl bg-white text-theme-700 disabled:opacity-30 flex items-center justify-center font-bold hover:bg-theme-50"><i className="fa-solid fa-arrow-left mr-2"></i> 上一篇</button>
-                                <button disabled={currentIndex === validDates.length - 1} onClick={() => setSelectedDate(validDates[currentIndex + 1])} className="flex-1 py-4 rounded-2xl bg-white text-theme-700 disabled:opacity-30 flex items-center justify-center font-bold hover:bg-theme-50">下一篇 <i className="fa-solid fa-arrow-right ml-2"></i></button>
+                            <div className="flex gap-2">
+                                <button 
+                                     disabled={currentIndex === 0} 
+                                     onClick={() => { setSelectedDate(validDates[currentIndex - 1]); setShowAnswer(false); window.scrollTo(0,0); }} 
+                                     className="flex-1 py-5 rounded-2xl bg-white border border-theme-200 text-theme-700 disabled:opacity-20 shadow-lg flex items-center justify-center font-bold transition hover:bg-theme-50"
+                                >
+                                    <i className="fa-solid fa-arrow-left mr-2"></i> <span className="hidden md:inline">前一天</span>
+                                </button>
+                                <button 
+                                    disabled={currentIndex === validDates.length - 1} 
+                                    onClick={() => { setSelectedDate(validDates[currentIndex + 1]); setShowAnswer(false); window.scrollTo(0,0); }} 
+                                    className="flex-1 py-5 rounded-2xl bg-white border border-theme-200 text-theme-700 disabled:opacity-20 shadow-lg flex items-center justify-center font-bold transition hover:bg-theme-50"
+                                >
+                                    <span className="hidden md:inline">後一天</span> <i className="fa-solid fa-arrow-right ml-2"></i>
+                                </button>
                             </div>
+                        </div>
+
+                        {/* 新增：底部返回主頁按鈕 */}
+                        <div className="flex justify-center mb-16">
+                            <button 
+                                onClick={()=>{ setView('calendar'); setShowAnswer(false); window.scrollTo(0,0); }} 
+                                className="w-full md:w-auto px-10 py-4 bg-white border-2 border-theme-200 text-theme-700 rounded-2xl shadow-sm hover:bg-theme-50 hover:border-theme-400 font-bold flex items-center justify-center transition-all group active:scale-95"
+                            >
+                                <i className="fa-solid fa-house mr-3 text-theme-500 group-hover:text-theme-600 transition-colors"></i> 
+                                <span className="text-lg">返回月曆主頁</span>
+                            </button>
                         </div>
                     </div>
                 );
             };
-
+            
             return (
                 <>
                     <AuthModal />
