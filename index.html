@@ -5,37 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教會恆常讀經計劃</title>
     
-    <style>
-        /* 採用現代感、平靜的「鼠尾草綠」與「天空藍」混合色系 */
-        :root {
-            --theme-50:  #f2f9f9;
-            --theme-100: #dfeeee;
-            --theme-200: #c1dcdc;
-            --theme-300: #93c3c3;
-            --theme-400: #5fa2a2;
-            --theme-500: #428787; 
-            --theme-600: #356d6d;
-            --theme-700: #2d5a5a;
-            --theme-800: #274a4a;
-            --theme-900: #233e3e;
-        }
-        body { 
-            background-color: var(--theme-50); 
-            background-image: radial-gradient(var(--theme-100) 1px, transparent 1px);
-            background-size: 20px 20px; 
-        }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-    </style>
+    <!-- 💡 專家優化：引入外部獨立的 CSS 檔案 -->
+    <link rel="stylesheet" href="style.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <script>
+        // 保留 Tailwind 的 config，它會自動將 style.css 裡的變數轉換為自適應的排版工具
         tailwind.config = {
             theme: {
                 extend: {
@@ -67,14 +43,21 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // 💡 專家級輔助函數：從 style.css 讀取文字變數並去除引號
+        const getCssText = (varName, fallback) => {
+            const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+            return val ? val.replace(/^["']|["']$/g, '') : fallback;
+        };
+
         const SITE_CONFIG = {
             SPREADSHEET_ID: '1HLCf500XATePsBxyw1OOyr_gSCMsIGNOvcXaGemn_Vs', 
             SHEET_NAME: 'ReadBible',
-            titleLine1: "剛強壯膽 · 踐信力行",
-            titleLine2: "葵涌堂 每日讀經計劃",
-            subtitle: "神的話語是我們腳前的燈、路上的光",
-            description: "同讀聖言行真道 · 聆聽聖靈活新生",
-            footerText: "© CCAGKC · BIBLE READING PORTAL",
+            // 💡 透過橋接技術，動態拉取 style.css 裡的文案
+            titleLine1: getCssText('--text-title-1', "剛強壯膽 · 踐信力行"),
+            titleLine2: getCssText('--text-title-2', "葵涌堂 每日讀經計劃"),
+            subtitle: getCssText('--text-subtitle', "讓神的話語成為我們腳前的燈"),
+            description: getCssText('--text-desc', "同讀聖言行真道 · 隨時隨地靈修"),
+            footerText: getCssText('--text-footer', "© KWAI CHUNG CHURCH · BIBLE READING PORTAL"),
             storageKey: "kc-church-bible-progress-v3",
             pseudoEmailDomain: "@kcc.bible.app",
             adminEmailDomain: "@admin.kcc.app"
