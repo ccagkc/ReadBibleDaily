@@ -43,12 +43,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // 💡 專家級輔助函數：從 style.css 讀取文字變數並去除引號
-        const getCssText = (varName, fallback) => {
-            const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-            return val ? val.replace(/^["']|["']$/g, '') : fallback;
-        };
-
         const SITE_CONFIG = {
             SPREADSHEET_ID: '1HLCf500XATePsBxyw1OOyr_gSCMsIGNOvcXaGemn_Vs', 
             SHEET_NAME: 'ReadBible',
@@ -119,11 +113,34 @@
             const [showAuthModal, setShowAuthModal] = useState(false);
             const [showAdminLogin, setShowAdminLogin] = useState(false);
             const [syncing, setSyncing] = useState(false);
+            const [uiText, setUiText] = useState({
+                titleLine1: "剛強壯膽 · 踐信力行",
+                titleLine2: "葵涌堂 每日讀經計劃",
+                subtitle: "讓神的話語成為我們腳前的燈",
+                description: "同讀聖言行真道 · 隨時隨地靈修",
+                footerText: "© KWAI CHUNG CHURCH · BIBLE READING PORTAL"
+            });
 
             let unsubscribeProgress = useRef(null);
             let unsubscribeSettings = useRef(null);
             let unsubscribeProfile = useRef(null);
+            
+            useEffect(() => {
+                // 💡 專家優化：在元件掛載後 (此時 CSSOM 絕對已載入完畢) 才去讀取 CSS 變數
+                const getCssText = (varName, fallback) => {
+                    const val = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                    return val ? val.replace(/^["']|["']$/g, '') : fallback;
+                };
 
+                setUiText({
+                    titleLine1: getCssText('--text-title-1', "剛強壯膽 · 踐信力行"),
+                    titleLine2: getCssText('--text-title-2', "葵涌堂 每日讀經計劃"),
+                    subtitle: getCssText('--text-subtitle', "讓神的話語成為我們腳前的燈"),
+                    description: getCssText('--text-desc', "同讀聖言行真道 · 隨時隨地靈修"),
+                    footerText: getCssText('--text-footer', "© KWAI CHUNG CHURCH · BIBLE READING PORTAL")
+                });
+            }, []); // 空陣列代表只在網頁初始載入時執行一次
+            
             useEffect(() => {
                 let unsubscribeAuth = null; // 🛡️ 專家防護：儲存 Auth 監聽器以便清理
 
@@ -902,7 +919,7 @@
                         <div className="max-w-5xl mx-auto px-4 py-4 md:py-5 flex justify-between items-center gap-2">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-theme-600 rounded-lg flex items-center justify-center text-white shadow-md transform -rotate-3 cursor-pointer" onClick={()=>setView('calendar')}><i className="fa-solid fa-cross text-xl"></i></div>
-                                <div><h1 className="text-xl md:text-2xl font-bold text-theme-900 tracking-tight">{SITE_CONFIG.titleLine2}</h1></div>
+                                <div><h1 className="text-xl md:text-2xl font-bold text-theme-900 tracking-tight">{uiText.titleLine2}</h1></div>
                             </div>
                             
                             {fb && (
@@ -948,9 +965,9 @@
                     </main>
 
                     <footer className="py-8 bg-theme-900 text-center text-theme-300 text-[10px] md:text-xs tracking-widest mt-auto">
-                        <p className="mb-2"><i className="fa-solid fa-seedling mr-2"></i>{SITE_CONFIG.description}</p>
+                        <p className="mb-2"><i className="fa-solid fa-seedling mr-2"></i>{uiText.description}</p>
                         <div className="flex justify-center items-center gap-4 opacity-50 hover:opacity-100 transition">
-                            <p>{SITE_CONFIG.footerText}</p>
+                            <p>{uiText.footerText}</p>
                             {!currentUser && <button onClick={() => setShowAdminLogin(true)} className="text-theme-400 hover:text-white" title="管理員登入"><i className="fa-solid fa-lock"></i></button>}
                         </div>
                     </footer>
