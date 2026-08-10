@@ -501,6 +501,43 @@
                     await fb.dbModule.setDoc(settingsRef, { groups: updated }, { merge: true });
                 };
 
+                const handleExportCSV = () => {
+                    if (usersList.length === 0) {
+                        alert("目前沒有數據可供匯出。");
+                        return;
+                    }
+
+                    const headers = ['小組/牧區', '姓名/代號', '已讀天數', '最後活動日期', '註冊日期'];
+                    
+                    const rows = usersList.map(user => [
+                        user.group || '未分類',
+                        user.username || '無名',
+                        user.completedCount || 0,
+                        user.lastActive ? user.lastActive.substring(0, 10) : '無紀錄',
+                        user.createdAt ? user.createdAt.substring(0, 10) : '無紀錄'
+                    ]);
+
+                    const csvContent = [
+                        headers.join(','),
+                        ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))
+                    ].join('\n');
+
+                    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+                    const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+                    
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    const today = new Date();
+                    const dateStr = `${today.getFullYear()}${(today.getMonth()+1).toString().padStart(2, '0')}${today.getDate().toString().padStart(2, '0')}`;
+                    
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `葵涌堂_讀經進度統計_${dateStr}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                };
+
                 const groupedStats = usersList.reduce((acc, user) => {
                     const group = user.group || '未分類';
                     if (!acc[group]) acc[group] = [];
@@ -553,13 +590,27 @@
                             )}
 
                             {activeTab === 'stats' && (
-                                <div>
+                                <div className="animate-fade-in">
                                     {loadingStats ? (
                                         <div className="flex justify-center items-center py-20 text-gray-400"><i className="fa-solid fa-spinner fa-spin text-3xl mr-3"></i> 載入數據中...</div>
                                     ) : (
                                         <div className="space-y-6">
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 md:px-6 rounded-2xl shadow-sm border border-nature-100 mb-6 gap-4">
+                                                <div>
+                                                    <h3 className="font-bold text-nature-800 text-lg">全教會參與數據</h3>
+                                                    <p className="text-xs text-gray-400 mt-1">目前共有 {usersList.length} 位參與者</p>
+                                                </div>
+                                                <button 
+                                                    onClick={handleExportCSV}
+                                                    disabled={usersList.length === 0}
+                                                    className="w-full md:w-auto bg-nature-600 hover:bg-nature-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center"
+                                                >
+                                                    <i className="fa-solid fa-file-csv mr-2 text-lg"></i> 匯出 Excel / CSV 報表
+                                                </button>
+                                            </div>
+
                                             {Object.keys(groupedStats).length === 0 ? (
-                                                <div className="text-center py-10 text-gray-400">目前還沒有任何使用者註冊記錄。</div>
+                                                <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200">目前還沒有任何使用者註冊記錄。</div>
                                             ) : (
                                                 Object.keys(groupedStats).sort().map(groupName => (
                                                     <div key={groupName} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -625,7 +676,6 @@
                     });
                 };
                 
-                // 💡 修改：適配參考設計的「進入今日閱讀」邏輯
                 const handleGoToday = () => {
                     if (validDates.length > 0) {
                         let targetDate = validDates.includes(todayStr) ? todayStr : null;
@@ -685,7 +735,6 @@
                                     const hasAudio = hasData && data[dateStr]['語音連結'] && data[dateStr]['語音連結'].trim() !== '';
                                     const hasQuestion = hasData && data[dateStr]['問題'] && data[dateStr]['問題'].trim() !== '';
                                     
-                                    // 💡 專家優化：完美還原參考設計中的屬性顏色配置
                                     let btnClass = 'relative h-14 md:h-20 rounded-2xl flex flex-col items-center justify-center transition-all ';
                                     
                                     if (!isPlan) {
@@ -952,7 +1001,6 @@
                         </div>
                     </header>
 
-                    {/* 💡 專家優化：匯入參考設計的超質感視覺標題 */}
                     {view === 'calendar' && (
                         <div className="bg-gradient-to-br from-nature-800 to-nature-600 text-white py-10 px-4 shadow-xl text-center relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
