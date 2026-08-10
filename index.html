@@ -5,33 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>教會恆常讀經計劃</title>
     
-    <style>
-        /* 採用現代感、平靜的「鼠尾草綠」與「天空藍」混合色系 */
-        :root {
-            --theme-50:  #f2f9f9;
-            --theme-100: #dfeeee;
-            --theme-200: #c1dcdc;
-            --theme-300: #93c3c3;
-            --theme-400: #5fa2a2;
-            --theme-500: #428787; 
-            --theme-600: #356d6d;
-            --theme-700: #2d5a5a;
-            --theme-800: #274a4a;
-            --theme-900: #233e3e;
-        }
-        body { 
-            background-color: var(--theme-50); 
-            background-image: radial-gradient(var(--theme-100) 1px, transparent 1px);
-            background-size: 20px 20px; 
-        }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-    </style>
+    <link rel="stylesheet" href="style.css?v=4">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -44,7 +18,7 @@
                         'sans': ['"Noto Sans TC"', 'sans-serif'],
                     },
                     colors: {
-                        theme: { 
+                        nature: { 
                             50: 'var(--theme-50)', 100: 'var(--theme-100)', 200: 'var(--theme-200)', 
                             300: 'var(--theme-300)', 400: 'var(--theme-400)', 500: 'var(--theme-500)', 
                             600: 'var(--theme-600)', 700: 'var(--theme-700)', 800: 'var(--theme-800)', 900: 'var(--theme-900)'
@@ -142,83 +116,80 @@
             let unsubscribeProfile = useRef(null);
 
             useEffect(() => {
-                let unsubscribeAuth = null; // 🛡️ 專家防護：儲存 Auth 監聽器以便清理
+                let unsubscribeAuth = null;
 
                 const initFirebase = async () => {
-                                    try {
-                                        const appModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-                                        const authModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-                                        const dbModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    try {
+                        const appModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                        const authModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                        const dbModule = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                
+                        const firebaseConfig = {
+                            apiKey: "AIzaSyAEMB-eVojfzcUMyKt9JgGK_okPRO2V73g",
+                            authDomain: "ccagkc-biblereading-project.firebaseapp.com",
+                            databaseURL: "https://ccagkc-biblereading-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+                            projectId: "ccagkc-biblereading-project",
+                            storageBucket: "ccagkc-biblereading-project.firebasestorage.app",
+                            messagingSenderId: "962459311265",
+                            appId: "1:962459311265:web:cbad43a46491a046e5e4e0"
+                        };
+                        
+                        const app = appModule.initializeApp(firebaseConfig);
+                        const auth = authModule.getAuth(app);
+                        const db = dbModule.getFirestore(app);
+                        const appId = 'kcc-bible-app'; 
+                
+                        setFb({ auth, db, appId, authModule, dbModule });
+                
+                        const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
+                        unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
+                            if (snap.exists()) {
+                                setAppSettings(snap.data());
+                            } else {
+                                setAppSettings({ groups: ['未入組/其他', '少年崇拜', '奇行組', 'IMA組', '加利利奮青', '彼得組', '隨意行組', '葡萄果組', 
+                                                      'Spectrum組', '家靈一組', '7-11組', '清心組', 'ReConnect組', '基順ECO組', '蜜組', '喜樂組'] });
+                            }
+                        }, (err) => console.warn("等待設定檔授權中:", err.message));
+                
+                        unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
+                            if (unsubscribeProfile.current) unsubscribeProfile.current();
+                            if (unsubscribeProgress.current) unsubscribeProgress.current();
+                
+                            if (user) {
+                                setCurrentUser(user);
                                 
-                                        const firebaseConfig = {
-                                            apiKey: "AIzaSyAEMB-eVojfzcUMyKt9JgGK_okPRO2V73g",
-                                            authDomain: "ccagkc-biblereading-project.firebaseapp.com",
-                                            databaseURL: "https://ccagkc-biblereading-project-default-rtdb.asia-southeast1.firebasedatabase.app",
-                                            projectId: "ccagkc-biblereading-project",
-                                            storageBucket: "ccagkc-biblereading-project.firebasestorage.app",
-                                            messagingSenderId: "962459311265",
-                                            appId: "1:962459311265:web:cbad43a46491a046e5e4e0"
-                                        };
-                                        
-                                        const app = appModule.initializeApp(firebaseConfig);
-                                        const auth = authModule.getAuth(app);
-                                        const db = dbModule.getFirestore(app);
-                                        const appId = 'kcc-bible-app'; 
+                                if (user.email.endsWith(SITE_CONFIG.adminEmailDomain) && view !== 'admin-dashboard') {
+                                    setView('admin-dashboard');
+                                }
                                 
-                                        setFb({ auth, db, appId, authModule, dbModule });
-                                
-                                        // 監聽全局設定 (小組列表)
-                                        const settingsRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'general');
-                                        unsubscribeSettings.current = dbModule.onSnapshot(settingsRef, (snap) => {
-                                            if (snap.exists()) {
-                                                setAppSettings(snap.data());
-                                            } else {
-                                                setAppSettings({ groups: ['未入組/其他', '少年崇拜', '奇行組', 'IMA組', '加利利奮青', '彼得組', '隨意行組', '葡萄果組', 
-                                                                      'Spectrum組', '家靈一組', '7-11組', '清心組', 'ReConnect組', '基順ECO組', '蜜組', '喜樂組'] });
-                                            }
-                                        }, (err) => console.warn("等待設定檔授權中:", err.message));
-                                
-                                        // 💡 專家修正：移除重複嵌套的程式碼，確保語法正確閉合
-                                        unsubscribeAuth = authModule.onAuthStateChanged(auth, (user) => {
-                                            if (unsubscribeProfile.current) unsubscribeProfile.current();
-                                            if (unsubscribeProgress.current) unsubscribeProgress.current();
-                                
-                                            if (user) {
-                                                setCurrentUser(user);
-                                                
-                                                if (user.email.endsWith(SITE_CONFIG.adminEmailDomain) && view !== 'admin-dashboard') {
-                                                    setView('admin-dashboard');
-                                                }
-                                                
-                                                const profileRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'userProfiles', user.uid);
-                                                unsubscribeProfile.current = dbModule.onSnapshot(profileRef, (snap) => {
-                                                    if (snap.exists()) {
-                                                        setUserProfile(snap.data());
-                                                    } else if (user.email.endsWith(SITE_CONFIG.adminEmailDomain)) {
-                                                        setUserProfile({ username: user.email.split('@')[0], role: 'admin' });
-                                                    }
-                                                }, (err) => console.warn("等待 Profile 權限同步:", err.message));
-                                
-                                                const progressRef = dbModule.doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'progress');
-                                                unsubscribeProgress.current = dbModule.onSnapshot(progressRef, (docSnap) => {
-                                                    if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
-                                                }, (err) => console.warn("等待 Progress 權限同步:", err.message));
-                                            } else {
-                                                setCurrentUser(null);
-                                                setUserProfile(null);
-                                                setCompleted([]); // 💡 專家優化：登出時強制清空記憶體中的已讀紀錄
-                                                setView('calendar'); 
-                                            }
-                                        });
-                                
-                                    } catch (e) {
-                                        console.error("Firebase 模組載入失敗", e);
+                                const profileRef = dbModule.doc(db, 'artifacts', appId, 'public', 'data', 'userProfiles', user.uid);
+                                unsubscribeProfile.current = dbModule.onSnapshot(profileRef, (snap) => {
+                                    if (snap.exists()) {
+                                        setUserProfile(snap.data());
+                                    } else if (user.email.endsWith(SITE_CONFIG.adminEmailDomain)) {
+                                        setUserProfile({ username: user.email.split('@')[0], role: 'admin' });
                                     }
-                                };
+                                }, (err) => console.warn("等待 Profile 權限同步:", err.message));
+                
+                                const progressRef = dbModule.doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'progress');
+                                unsubscribeProgress.current = dbModule.onSnapshot(progressRef, (docSnap) => {
+                                    if (docSnap.exists()) setCompleted(docSnap.data().completedDates || []);
+                                }, (err) => console.warn("等待 Progress 權限同步:", err.message));
+                            } else {
+                                setCurrentUser(null);
+                                setUserProfile(null);
+                                setCompleted([]); 
+                                setView('calendar'); 
+                            }
+                        });
+                
+                    } catch (e) {
+                        console.error("Firebase 模組載入失敗", e);
+                    }
+                };
                                 
                 initFirebase();
 
-                // 🛡️ 專家防護：React 重新渲染時，徹底清理所有監聽，切斷無限迴圈的可能
                 return () => { 
                     if (unsubscribeAuth) unsubscribeAuth();
                     if (unsubscribeProgress.current) unsubscribeProgress.current(); 
@@ -360,10 +331,10 @@
                 };
 
                 return (
-                    <div className="fixed inset-0 bg-theme-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-nature-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-fade-in">
-                            <div className="bg-theme-600 p-6 text-white relative">
-                                <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-theme-700 transition">
+                            <div className="bg-nature-600 p-6 text-white relative">
+                                <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-nature-700 transition">
                                     <i className="fa-solid fa-xmark"></i>
                                 </button>
                                 <h2 className="text-2xl font-bold font-serif flex items-center">
@@ -377,22 +348,22 @@
                                 <form onSubmit={handleAction} className="space-y-4">
                                     {step === 1 ? (
                                         <div className="animate-fade-in">
-                                            <label className="block text-sm font-bold text-theme-800 mb-2">輸入你的個人代號 或 英文簡稱</label>
-                                            <input type="text" value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))} placeholder="例如：peter-chan" className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:border-theme-500 bg-gray-50 text-lg" required />
+                                            <label className="block text-sm font-bold text-nature-800 mb-2">輸入你的個人代號 或 英文簡稱</label>
+                                            <input type="text" value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-zA-Z0-9_-]/g, ''))} placeholder="例如：peter-chan" className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:border-nature-500 bg-gray-50 text-lg" required />
                                             <p className="text-xs text-gray-500 mt-2"><i className="fa-solid fa-circle-info"></i> 系統自動辨識，首次登記將填寫所屬教會小組。</p>
                                         </div>
                                     ) : (
                                         <div className="animate-fade-in space-y-4">
-                                            <div className="bg-theme-50 p-3 rounded-xl border border-theme-100 flex items-center">
-                                                <i className="fa-solid fa-user-tag text-theme-400 mr-3 text-lg"></i>
+                                            <div className="bg-nature-50 p-3 rounded-xl border border-nature-100 flex items-center">
+                                                <i className="fa-solid fa-user-tag text-nature-400 mr-3 text-lg"></i>
                                                 <div>
                                                     <div className="text-xs text-gray-500">正在註冊個人代號</div>
-                                                    <div className="font-bold text-theme-800">{username}</div>
+                                                    <div className="font-bold text-nature-800">{username}</div>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-bold text-theme-800 mb-2">請選擇你所屬的小組 <span className="text-red-500">*</span></label>
-                                                <select value={selectedGroup} onChange={e=>setSelectedGroup(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:border-theme-500 bg-gray-50 text-lg" required>
+                                                <label className="block text-sm font-bold text-nature-800 mb-2">請選擇你所屬的小組 <span className="text-red-500">*</span></label>
+                                                <select value={selectedGroup} onChange={e=>setSelectedGroup(e.target.value)} className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:border-nature-500 bg-gray-50 text-lg" required>
                                                     <option value="" disabled>-- 請選擇小組 --</option>
                                                     {appSettings.groups.map(g => <option key={g} value={g}>{g}</option>)}
                                                 </select>
@@ -401,7 +372,7 @@
                                         </div>
                                     )}
 
-                                    <button type="submit" disabled={processing} className="w-full bg-theme-600 hover:bg-theme-700 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 mt-4 text-lg">
+                                    <button type="submit" disabled={processing} className="w-full bg-nature-600 hover:bg-nature-700 text-white font-bold py-4 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 mt-4 text-lg">
                                         {processing ? <i className="fa-solid fa-spinner fa-spin"></i> : (step === 1 ? '確認代號' : '完成註冊')}
                                     </button>
                                     
@@ -427,7 +398,6 @@
                     e.preventDefault();
                     setLoading(true);
                     setErrorMsg('');
-                    // 💡 專家優化：在底層自動綁定固定唯一的管理員 Email
                     const adminEmail = `admin${SITE_CONFIG.adminEmailDomain}`;
                     
                     try {
@@ -437,7 +407,6 @@
                             await fb.dbModule.setDoc(profileRef, { username: '系統管理員', role: 'admin', createdAt: new Date().toISOString() });
                         } else {
                             const cred = await fb.authModule.signInWithEmailAndPassword(fb.auth, adminEmail, password);
-                            // 🛡️ 專家防護：自我修復機制
                             const profileRef = fb.dbModule.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'userProfiles', cred.user.uid);
                             const snap = await fb.dbModule.getDoc(profileRef);
                             if (!snap.exists()) {
@@ -449,8 +418,10 @@
                     } catch (err) {
                         if (err.code === 'auth/email-already-in-use') {
                             setErrorMsg("管理員已存在，請取消勾選「首次使用」直接登入");
+                        } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+                            setErrorMsg(isRegister ? "設定失敗 (密碼需至少6個字元)" : "登入失敗 (若是剛重置系統，請勾選下方選項重新建立帳號)");
                         } else {
-                            setErrorMsg(isRegister ? "設定失敗 (密碼需至少6個字元)" : "登入失敗 (密碼錯誤)");
+                            setErrorMsg(err.message);
                         }
                     } finally {
                         setLoading(false);
@@ -461,7 +432,7 @@
                     <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-[1.5rem] w-full max-w-sm shadow-2xl overflow-hidden animate-fade-in">
                             <div className="bg-gray-800 p-5 text-white flex justify-between items-center">
-                                <h3 className="font-bold flex items-center"><i className="fa-solid fa-shield-halved mr-2 text-theme-300"></i> 管理員安全登入</h3>
+                                <h3 className="font-bold flex items-center"><i className="fa-solid fa-shield-halved mr-2 text-nature-300"></i> 管理員安全登入</h3>
                                 <button onClick={() => setShowAdminLogin(false)} className="text-gray-400 hover:text-white transition"><i className="fa-solid fa-xmark text-lg"></i></button>
                             </div>
                             <form onSubmit={handleAdminAuth} className="p-6 md:p-8 space-y-5">
@@ -469,11 +440,11 @@
                                 
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">請輸入管理員密碼</label>
-                                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-theme-500 focus:ring-4 focus:ring-theme-100 transition text-xl tracking-widest text-center font-bold" required autoFocus />
+                                    <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-nature-500 focus:ring-4 focus:ring-nature-100 transition text-xl tracking-widest text-center font-bold" required autoFocus />
                                 </div>
                                 
                                 <div className="flex items-center justify-center mt-2">
-                                    <input type="checkbox" id="regAdmin" checked={isRegister} onChange={(e) => setIsRegister(e.target.checked)} className="mr-2 w-4 h-4 text-theme-600 rounded border-gray-300" />
+                                    <input type="checkbox" id="regAdmin" checked={isRegister} onChange={(e) => setIsRegister(e.target.checked)} className="mr-2 w-4 h-4 text-nature-600 rounded border-gray-300" />
                                     <label htmlFor="regAdmin" className="text-xs text-gray-500 cursor-pointer hover:text-gray-700 transition">首次使用 (建立管理員密碼)</label>
                                 </div>
                                 
@@ -493,7 +464,6 @@
                 const [loadingStats, setLoadingStats] = useState(false);
 
                 useEffect(() => {
-                    // 🛡️ 專家防護：加入 role === 'admin' 檢查，避免非法觸發拉取全體資料
                     if (activeTab === 'stats' && fb && userProfile?.role === 'admin') {
                         setLoadingStats(true);
                         const fetchUsers = async () => {
@@ -507,7 +477,7 @@
                                 });
                                 setUsersList(list);
                             } catch (e) {
-                                console.error("獲取統計資料失敗 (可能遭安全性規則阻擋):", e.message);
+                                console.error("獲取統計資料失敗:", e.message);
                             } finally {
                                 setLoadingStats(false);
                             }
@@ -542,7 +512,7 @@
                     <div className="max-w-5xl mx-auto w-full animate-fade-in bg-white rounded-3xl shadow-soft border border-gray-100 overflow-hidden min-h-[60vh]">
                         <div className="bg-gray-900 text-white p-6 md:p-8 flex justify-between items-center">
                             <div>
-                                <h2 className="text-2xl font-bold font-serif mb-1"><i className="fa-solid fa-server mr-2 text-theme-400"></i> 教會讀經後台系統</h2>
+                                <h2 className="text-2xl font-bold font-serif mb-1"><i className="fa-solid fa-server mr-2 text-nature-400"></i> 教會讀經後台系統</h2>
                                 <p className="text-gray-400 text-sm">管理員：{userProfile?.username}</p>
                             </div>
                             <button onClick={() => setView('calendar')} className="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm transition font-bold border border-gray-700">
@@ -551,24 +521,24 @@
                         </div>
 
                         <div className="flex border-b border-gray-200">
-                            <button onClick={() => setActiveTab('stats')} className={`flex-1 py-4 font-bold transition ${activeTab === 'stats' ? 'bg-theme-50 text-theme-700 border-b-2 border-theme-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fa-solid fa-chart-pie mr-2"></i> 參與統計</button>
-                            <button onClick={() => setActiveTab('settings')} className={`flex-1 py-4 font-bold transition ${activeTab === 'settings' ? 'bg-theme-50 text-theme-700 border-b-2 border-theme-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fa-solid fa-users-gear mr-2"></i> 小組設定</button>
+                            <button onClick={() => setActiveTab('stats')} className={`flex-1 py-4 font-bold transition ${activeTab === 'stats' ? 'bg-nature-50 text-nature-700 border-b-2 border-nature-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fa-solid fa-chart-pie mr-2"></i> 參與統計</button>
+                            <button onClick={() => setActiveTab('settings')} className={`flex-1 py-4 font-bold transition ${activeTab === 'settings' ? 'bg-nature-50 text-nature-700 border-b-2 border-nature-600' : 'text-gray-500 hover:bg-gray-50'}`}><i className="fa-solid fa-users-gear mr-2"></i> 小組設定</button>
                         </div>
 
                         <div className="p-6 md:p-8 bg-gray-50 min-h-[400px]">
                             {activeTab === 'settings' && (
                                 <div className="max-w-2xl mx-auto space-y-8">
                                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                        <h3 className="font-bold text-lg mb-4 text-gray-800 border-l-4 border-theme-500 pl-3">新增小組 / 身份類別</h3>
+                                        <h3 className="font-bold text-lg mb-4 text-gray-800 border-l-4 border-nature-500 pl-3">新增小組 / 身份類別</h3>
                                         <div className="flex gap-2">
-                                            <input type="text" value={newGroup} onChange={e=>setNewGroup(e.target.value)} placeholder="例如：約書亞團契" className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-theme-500" />
-                                            <button onClick={handleAddGroup} className="bg-theme-600 text-white px-6 font-bold rounded-xl hover:bg-theme-700 transition">新增</button>
+                                            <input type="text" value={newGroup} onChange={e=>setNewGroup(e.target.value)} placeholder="例如：約書亞團契" className="flex-1 p-3 border border-gray-200 rounded-xl focus:outline-none focus:border-nature-500" />
+                                            <button onClick={handleAddGroup} className="bg-nature-600 text-white px-6 font-bold rounded-xl hover:bg-nature-700 transition">新增</button>
                                         </div>
                                         <p className="text-xs text-gray-400 mt-2">新增後，新註冊的使用者將可以在選單中選擇此小組。</p>
                                     </div>
 
                                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                                        <h3 className="font-bold text-lg mb-4 text-gray-800 border-l-4 border-theme-500 pl-3">現有小組列表</h3>
+                                        <h3 className="font-bold text-lg mb-4 text-gray-800 border-l-4 border-nature-500 pl-3">現有小組列表</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             {appSettings.groups.map(g => (
                                                 <div key={g} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -593,9 +563,9 @@
                                             ) : (
                                                 Object.keys(groupedStats).sort().map(groupName => (
                                                     <div key={groupName} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                                                        <div className="bg-theme-100/50 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
-                                                            <h3 className="font-bold text-theme-800"><i className="fa-solid fa-users text-theme-500 mr-2"></i> {groupName}</h3>
-                                                            <span className="bg-theme-600 text-white text-xs px-2 py-1 rounded-full font-bold">{groupedStats[groupName].length} 人</span>
+                                                        <div className="bg-nature-100/50 px-6 py-3 border-b border-gray-100 flex justify-between items-center">
+                                                            <h3 className="font-bold text-nature-800"><i className="fa-solid fa-users text-nature-500 mr-2"></i> {groupName}</h3>
+                                                            <span className="bg-nature-600 text-white text-xs px-2 py-1 rounded-full font-bold">{groupedStats[groupName].length} 人</span>
                                                         </div>
                                                         <div className="divide-y divide-gray-100">
                                                             {groupedStats[groupName].sort((a,b) => (b.completedCount||0) - (a.completedCount||0)).map((user, idx) => (
@@ -621,17 +591,9 @@
             };
 
             if (loading) return (
-                <div className="flex-grow flex flex-col items-center justify-center text-theme-600 bg-theme-50">
-                    <i className="fa-solid fa-compass fa-spin text-5xl mb-6 opacity-70"></i>
-                    <p className="font-medium animate-pulse text-lg tracking-widest">正在同步最新讀經資料...</p>
-                </div>
-            );
-
-            if (error) return (
-                <div className="flex-grow flex flex-col items-center justify-center text-red-600 bg-red-50 p-6 text-center">
-                    <i className="fa-solid fa-triangle-exclamation text-5xl mb-4"></i>
-                    <p className="font-bold text-xl mb-2">無法載入系統</p>
-                    <p className="text-gray-600">{error}</p>
+                <div className="flex-grow flex flex-col items-center justify-center text-nature-600 bg-nature-50">
+                    <i className="fa-solid fa-leaf fa-spin text-5xl mb-4"></i>
+                    <p className="font-medium animate-pulse text-lg mt-4 tracking-widest">正在同步最新讀經資料...</p>
                 </div>
             );
 
@@ -662,63 +624,105 @@
                         return next;
                     });
                 };
+                
+                // 💡 修改：適配參考設計的「進入今日閱讀」邏輯
+                const handleGoToday = () => {
+                    if (validDates.length > 0) {
+                        let targetDate = validDates.includes(todayStr) ? todayStr : null;
+                        if (!targetDate) {
+                            const pastDates = validDates.filter(d => d <= todayStr);
+                            targetDate = pastDates.length > 0 ? pastDates[pastDates.length - 1] : validDates[0];
+                        }
+                        const parts = targetDate.split('-');
+                        setCurrentViewMonth(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
+                        setSelectedDate(targetDate);
+                        setView('reader');
+                        setShowAnswer(false);
+                        window.scrollTo(0,0);
+                    }
+                };
 
                 return (
-                    <div className="max-w-5xl mx-auto w-full animate-fade-in">
-                        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                            <div className="glass-panel p-2 rounded-full shadow-soft border border-white flex items-center justify-between w-full md:w-auto md:min-w-[320px]">
-                                <button onClick={() => changeMonth(-1)} className="w-12 h-12 flex items-center justify-center rounded-full text-theme-600 hover:bg-theme-100 transition-colors"><i className="fa-solid fa-arrow-left"></i></button>
-                                <h3 className="text-xl md:text-2xl font-serif font-bold text-theme-800 tracking-wider">{year} <span className="text-theme-400 text-base mx-1">年</span> {month + 1} <span className="text-theme-400 text-base">月</span></h3>
-                                <button onClick={() => changeMonth(1)} className="w-12 h-12 flex items-center justify-center rounded-full text-theme-600 hover:bg-theme-100 transition-colors"><i className="fa-solid fa-arrow-right"></i></button>
-                            </div>
-                            <button onClick={() => {
-                                if (validDates.length > 0) {
-                                    let targetDate = validDates.includes(todayStr) ? todayStr : null;
-                                    if (!targetDate) {
-                                        const pastDates = validDates.filter(d => d < todayStr);
-                                        targetDate = pastDates.length > 0 ? pastDates[pastDates.length - 1] : validDates[0];
-                                    }
-                                    const parts = targetDate.split('-');
-                                    setCurrentViewMonth(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
-                                    setSelectedDate(targetDate);
-                                    setView('reader');
-                                }
-                            }} className="px-6 py-4 bg-theme-600 hover:bg-theme-700 text-white rounded-full font-bold shadow-lg transition-all active:scale-95 flex items-center w-full md:w-auto justify-center">
-                                <i className="fa-solid fa-book-bible mr-3"></i> <span className="text-lg">進入最新閱讀</span>
+                    <div className="max-w-4xl mx-auto w-full animate-fade-in">
+                        
+                        <div className="flex justify-center mb-8">
+                            <button 
+                                onClick={handleGoToday}
+                                className="px-8 py-4 bg-white border-2 border-nature-600 text-nature-700 hover:bg-nature-600 hover:text-white rounded-full font-bold shadow-lg flex items-center transition-all group active:scale-95"
+                            >
+                                <i className="fa-solid fa-book-open-reader mr-3 text-nature-500 group-hover:text-white transition-colors"></i> 
+                                <span className="text-lg">進入今日閱讀</span>
                             </button>
                         </div>
 
-                        <div className="glass-panel rounded-[2rem] shadow-soft border border-white overflow-hidden">
-                            <div className="grid grid-cols-7 gap-px bg-theme-100/50">
-                                {['日','一','二','三','四','五','六'].map((day, idx) => (
-                                    <div key={day} className={`text-center py-4 text-sm font-bold bg-white/80 ${idx===0||idx===6 ? 'text-theme-400' : 'text-theme-800'}`}>{day}</div>
-                                ))}
+                        <div className="flex justify-between items-center bg-white p-4 md:px-8 md:py-5 rounded-[2rem] shadow-sm border border-nature-100 mb-8">
+                            <button onClick={() => changeMonth(-1)} className="px-4 py-2 md:px-6 md:py-3 rounded-2xl font-bold transition flex items-center justify-center text-nature-700 bg-nature-50 hover:bg-nature-100">
+                                <i className="fa-solid fa-chevron-left mr-2"></i> <span className="hidden md:inline">上一月</span>
+                            </button>
+                            <div className="text-xl md:text-3xl font-bold text-nature-800 tracking-widest">
+                                {year}年 {month + 1}月
+                            </div>
+                            <button onClick={() => changeMonth(1)} className="px-4 py-2 md:px-6 md:py-3 rounded-2xl font-bold transition flex items-center justify-center text-nature-700 bg-nature-50 hover:bg-nature-100">
+                                <span className="hidden md:inline">下一月</span> <i className="fa-solid fa-chevron-right ml-2"></i>
+                            </button>
+                        </div>
+
+                        <section className="bg-white rounded-[2rem] shadow-lg border border-nature-100 overflow-hidden">
+                            <div className="bg-nature-600 text-white py-3 text-center font-bold text-lg tracking-widest hidden md:block">
+                                {year}年 {month + 1}月
+                            </div>
+                            <div className="p-4 md:p-6 grid grid-cols-7 gap-2 md:gap-3">
+                                {['日','一','二','三','四','五','六'].map(d => <div key={d} className="text-center text-gray-400 text-xs md:text-sm font-bold py-1 uppercase">{d}</div>)}
+                                
                                 {grid.map((week, wi) => week.map((dateObj, di) => {
-                                    if (!dateObj) return <div key={`empty-${wi}-${di}`} className="bg-white/40 p-2 md:p-4 min-h-[100px] md:min-h-[120px]"></div>;
+                                    if(!dateObj) return <div key={`empty-${wi}-${di}`}></div>;
+                                    
                                     const dateStr = formatDate(dateObj);
-                                    const hasPlan = validDates.includes(dateStr);
-                                    const isCompleted = completed.includes(dateStr);
-                                    const dayData = hasPlan ? data[dateStr] : null;
+                                    const isPlan = validDates.includes(dateStr);
+                                    const isDone = completed.includes(dateStr);
+                                    const hasData = !!data[dateStr];
+                                    
+                                    const hasAudio = hasData && data[dateStr]['語音連結'] && data[dateStr]['語音連結'].trim() !== '';
+                                    const hasQuestion = hasData && data[dateStr]['問題'] && data[dateStr]['問題'].trim() !== '';
+                                    
+                                    // 💡 專家優化：完美還原參考設計中的屬性顏色配置
+                                    let btnClass = 'relative h-14 md:h-20 rounded-2xl flex flex-col items-center justify-center transition-all ';
+                                    
+                                    if (!isPlan) {
+                                        btnClass += 'bg-gray-50 text-gray-200 cursor-not-allowed';
+                                    } else if (isDone) {
+                                        btnClass += 'bg-nature-100 text-nature-700 border-2 border-nature-500 font-bold shadow-sm';
+                                    } else if (hasData) {
+                                        if (hasAudio) {
+                                            btnClass += 'bg-purple-50/30 border border-purple-200 hover:border-purple-400 hover:shadow-md text-purple-700 font-bold';
+                                        } else if (hasQuestion) {
+                                            btnClass += 'bg-nature-50 border border-nature-300 hover:border-nature-500 hover:shadow-md text-nature-700 font-bold';
+                                        } else {
+                                            btnClass += 'bg-gray-100 border border-gray-200 hover:border-gray-400 hover:shadow-md text-gray-500 font-bold';
+                                        }
+                                    } else {
+                                        btnClass += 'bg-white border border-gray-100 hover:border-nature-300 text-gray-400 opacity-60';
+                                    }
 
                                     return (
-                                        <div key={dateStr} className={`relative bg-white p-2 md:p-3 min-h-[100px] md:min-h-[130px] flex flex-col transition-all ${hasPlan ? 'cursor-pointer hover:bg-theme-50 ' + (isCompleted ? 'bg-emerald-50/40' : '') : 'cursor-default opacity-60'}`} 
-                                             onClick={() => { if(hasPlan) { setSelectedDate(dateStr); setView('reader'); setShowAnswer(false); window.scrollTo(0,0); } }}>
-                                            <div className="flex justify-between items-start">
-                                                <span className={`text-base md:text-xl font-bold w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full ${dateStr === todayStr ? 'bg-theme-600 text-white shadow-md' : (isCompleted ? 'text-emerald-600' : 'text-gray-600')}`}>
-                                                    {dateObj.getDate()}
-                                                </span>
-                                                {isCompleted && <i className="fa-solid fa-circle-check text-emerald-500 mt-1 md:mt-2"></i>}
-                                            </div>
-                                            {hasPlan && dayData && (
-                                                <div className="mt-auto pt-2">
-                                                    <div className="text-[10px] md:text-xs font-serif font-bold text-theme-700 leading-tight line-clamp-1">{dayData['經卷']} {dayData['章節']}</div>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <button 
+                                            key={dateStr}
+                                            disabled={!isPlan}
+                                            onClick={() => { 
+                                                setSelectedDate(dateStr); 
+                                                setView('reader'); 
+                                                setShowAnswer(false); 
+                                                window.scrollTo(0,0);
+                                            }}
+                                            className={btnClass}
+                                        >
+                                            <span className="text-lg md:text-xl">{dateObj.getDate()}</span>
+                                            {isDone && <i className="fa-solid fa-check-circle text-xs md:text-sm mt-1 absolute bottom-1 right-1 md:static md:mt-1"></i>}
+                                        </button>
                                     );
                                 }))}
                             </div>
-                        </div>
+                        </section>
                     </div>
                 );
             };
@@ -727,7 +731,6 @@
                 const currentData = data[selectedDate] || {};
                 if (!currentData || Object.keys(currentData).length === 0) return null;
 
-                // 💡 專家優化：完美移植新版的資料存在判斷邏輯
                 const hasAudio = !!currentData['語音連結'];
                 const hasScripture = !!currentData['經文'];
                 const hasExplanation = !!currentData['釋義'];
@@ -744,18 +747,16 @@
 
                 return (
                     <div className="max-w-3xl mx-auto w-full pb-10 animate-fade-in">
-                        {/* 頂部返回導航 */}
                         <div className="flex justify-between items-center mb-6">
-                            <button onClick={()=>{ setView('calendar'); setShowAnswer(false); }} className="bg-white px-4 py-2 rounded-full border border-theme-200 text-theme-700 font-medium hover:bg-theme-50 shadow-sm flex items-center text-sm transition">
+                            <button onClick={()=>{ setView('calendar'); setShowAnswer(false); }} className="bg-white px-4 py-2 rounded-full border border-nature-200 text-nature-700 font-medium hover:bg-nature-50 shadow-sm flex items-center text-sm transition">
                                 <i className="fa-solid fa-chevron-left mr-2"></i> 返回月曆
                             </button>
-                            <div className="text-gray-500 font-bold text-sm bg-white px-4 py-2 rounded-full shadow-sm border border-theme-50">{selectedDate}</div>
+                            <div className="text-gray-500 font-bold text-sm bg-white px-4 py-2 rounded-full shadow-sm border border-nature-50">{selectedDate}</div>
                         </div>
 
-                        {/* 內容卡片主體 */}
-                        <article className="bg-white rounded-[2.5rem] shadow-2xl border border-theme-100 overflow-hidden mb-8">
-                            <div className="bg-theme-700 text-white p-8 md:p-10">
-                                <div className="flex items-center space-x-2 text-theme-300 text-sm font-bold tracking-[0.2em] mb-3">
+                        <article className="bg-white rounded-[2.5rem] shadow-2xl border border-nature-100 overflow-hidden mb-8">
+                            <div className="bg-nature-700 text-white p-8 md:p-10">
+                                <div className="flex items-center space-x-2 text-nature-300 text-sm font-bold tracking-[0.2em] mb-3">
                                     <i className="fa-solid fa-book-open-reader"></i>
                                     <span>今日內容</span>
                                 </div>
@@ -765,11 +766,10 @@
                             </div>
                             
                             <div className="p-6 md:p-10 space-y-12">
-                                {/* 1. 語音朗讀區塊 */}
                                 {audioInfo && (
-                                    <section className="bg-theme-50/50 p-6 rounded-3xl border border-theme-100 shadow-inner">
-                                        <h4 className="text-theme-800 font-bold mb-4 flex items-center text-sm">
-                                            <i className="fa-solid fa-circle-play mr-2 text-theme-600"></i> 語音朗讀
+                                    <section className="bg-nature-50/50 p-6 rounded-3xl border border-nature-100 shadow-inner">
+                                        <h4 className="text-nature-800 font-bold mb-4 flex items-center text-sm">
+                                            <i className="fa-solid fa-circle-play mr-2 text-nature-600"></i> 語音朗讀
                                         </h4>
                                         {audioInfo.type === 'embed' ? (
                                             <iframe src={audioInfo.url} className="w-full h-16 border-0 rounded-xl bg-transparent"></iframe>
@@ -779,13 +779,12 @@
                                     </section>
                                 )}
 
-                                {/* 2. 聖經經文區塊 */}
                                 {hasScripture && (
                                     <section>
                                         <div className="flex justify-between items-end mb-6">
-                                            <h4 className="text-theme-700 font-bold border-l-4 border-theme-500 pl-3">聖經經文</h4>
+                                            <h4 className="text-nature-700 font-bold border-l-4 border-nature-500 pl-3">聖經經文</h4>
                                             {currentData['經文'].includes('http') && (
-                                                <a href={currentData['經文']} target="_blank" className="text-xs text-theme-600 hover:underline font-bold">
+                                                <a href={currentData['經文']} target="_blank" className="text-xs text-nature-600 hover:underline font-bold">
                                                     <i className="fa-solid fa-up-right-from-square mr-1"></i> 全螢幕閱讀
                                                 </a>
                                             )}
@@ -804,23 +803,21 @@
                                     </section>
                                 )}
 
-                                {/* 3. 經文釋義區塊 */}
                                 {hasExplanation && (
                                     <section>
-                                        <h4 className="text-theme-700 font-bold mb-4 border-l-4 border-theme-500 pl-3">經文釋義</h4>
-                                        <div className="bg-theme-50/30 p-6 md:p-8 rounded-3xl border border-theme-50 text-gray-600 leading-loose text-base md:text-lg italic font-serif">
+                                        <h4 className="text-nature-700 font-bold mb-4 border-l-4 border-nature-500 pl-3">經文釋義</h4>
+                                        <div className="bg-nature-50/30 p-6 md:p-8 rounded-3xl border border-nature-50 text-gray-600 leading-loose text-base md:text-lg italic font-serif">
                                             {currentData['釋義']}
                                         </div>
                                     </section>
                                 )}
 
-                                {/* 4. 查經問題與答案區塊 */}
                                 {hasQuestion && (
-                                    <section className="pt-6 border-t border-dashed border-theme-200">
+                                    <section className="pt-6 border-t border-dashed border-nature-200">
                                         <div className="flex justify-between items-end mb-6">
-                                            <h4 className="text-theme-700 font-bold border-l-4 border-theme-500 pl-3">將神的話讀入心</h4>
+                                            <h4 className="text-nature-700 font-bold border-l-4 border-nature-500 pl-3">將神的話讀入心</h4>
                                         </div>
-                                        <div className="rounded-2xl overflow-hidden bg-white border-2 border-theme-100 min-h-[100px]">
+                                        <div className="rounded-2xl overflow-hidden bg-white border-2 border-nature-100 min-h-[100px]">
                                             {questionInfo && questionInfo.type === 'embed' ? (
                                                 <div className="relative pt-[130%] md:pt-[100%] w-full">
                                                     <iframe src={questionInfo.url} className="absolute inset-0 w-full h-full border-0"></iframe>
@@ -832,19 +829,18 @@
                                             )}
                                         </div>
 
-                                        {/* 展開答案按鈕與內容 */}
                                         {hasAnswer && (
                                             <div className="mt-6">
                                                 {!showAnswer ? (
                                                     <button 
                                                         onClick={() => setShowAnswer(true)}
-                                                        className="px-6 py-3 bg-theme-100 hover:bg-theme-200 text-theme-700 font-bold rounded-xl transition-all shadow-sm flex items-center w-full md:w-auto justify-center"
+                                                        className="px-6 py-3 bg-nature-100 hover:bg-nature-200 text-nature-700 font-bold rounded-xl transition-all shadow-sm flex items-center w-full md:w-auto justify-center"
                                                     >
                                                         <i className="fa-solid fa-lightbulb mr-2"></i> 顯示參考答案
                                                     </button>
                                                 ) : (
-                                                    <div className="bg-theme-50 border border-theme-200 rounded-2xl p-6 md:p-8 relative mt-4 animate-fade-in">
-                                                        <h4 className="text-theme-700 font-bold mb-4 flex items-center border-b border-theme-200 pb-3">
+                                                    <div className="bg-nature-50 border border-nature-200 rounded-2xl p-6 md:p-8 relative mt-4 animate-fade-in">
+                                                        <h4 className="text-nature-700 font-bold mb-4 flex items-center border-b border-nature-200 pb-3">
                                                             <i className="fa-solid fa-key mr-2"></i> 參考答案
                                                         </h4>
                                                         {answerInfo && answerInfo.type === 'embed' ? (
@@ -865,12 +861,11 @@
                             </div>
                         </article>
 
-                        {/* 底部進度與切換按鈕 (保留 Firebase Sync 狀態) */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                            <button 
                                 onClick={()=>toggleFinish(selectedDate)}
                                 className={`md:col-span-2 py-5 rounded-2xl text-lg font-bold shadow-xl transition-all active:scale-95 flex items-center justify-center ${
-                                    isCompleted ? 'bg-white text-theme-600 border-2 border-theme-600' : 'bg-theme-600 text-white hover:bg-theme-700'
+                                    isCompleted ? 'bg-white text-nature-600 border-2 border-nature-600' : 'bg-nature-600 text-white hover:bg-nature-700'
                                 }`}
                             >
                                 {syncing ? <i className="fa-solid fa-spinner fa-spin mr-3 text-xl"></i> : <i className={`fa-solid mr-3 text-xl ${isCompleted ? 'fa-check-double' : 'fa-check'}`}></i>}
@@ -880,34 +875,41 @@
                                 <button 
                                      disabled={currentIndex === 0} 
                                      onClick={() => { setSelectedDate(validDates[currentIndex - 1]); setShowAnswer(false); window.scrollTo(0,0); }} 
-                                     className="flex-1 py-5 rounded-2xl bg-white border border-theme-200 text-theme-700 disabled:opacity-20 shadow-lg flex items-center justify-center font-bold transition hover:bg-theme-50"
+                                     className="flex-1 py-5 rounded-2xl bg-white border border-nature-200 text-nature-700 disabled:opacity-20 shadow-lg flex items-center justify-center font-bold transition hover:bg-nature-50"
                                 >
                                     <i className="fa-solid fa-arrow-left mr-2"></i> <span className="hidden md:inline">前一天</span>
                                 </button>
                                 <button 
                                     disabled={currentIndex === validDates.length - 1} 
                                     onClick={() => { setSelectedDate(validDates[currentIndex + 1]); setShowAnswer(false); window.scrollTo(0,0); }} 
-                                    className="flex-1 py-5 rounded-2xl bg-white border border-theme-200 text-theme-700 disabled:opacity-20 shadow-lg flex items-center justify-center font-bold transition hover:bg-theme-50"
+                                    className="flex-1 py-5 rounded-2xl bg-white border border-nature-200 text-nature-700 disabled:opacity-20 shadow-lg flex items-center justify-center font-bold transition hover:bg-nature-50"
                                 >
                                     <span className="hidden md:inline">後一天</span> <i className="fa-solid fa-arrow-right ml-2"></i>
                                 </button>
                             </div>
                         </div>
 
-                        {/* 新增：底部返回主頁按鈕 */}
                         <div className="flex justify-center mb-16">
                             <button 
                                 onClick={()=>{ setView('calendar'); setShowAnswer(false); window.scrollTo(0,0); }} 
-                                className="w-full md:w-auto px-10 py-4 bg-white border-2 border-theme-200 text-theme-700 rounded-2xl shadow-sm hover:bg-theme-50 hover:border-theme-400 font-bold flex items-center justify-center transition-all group active:scale-95"
+                                className="w-full md:w-auto px-10 py-4 bg-white border-2 border-nature-200 text-nature-700 rounded-2xl shadow-sm hover:bg-nature-50 hover:border-nature-400 font-bold flex items-center justify-center transition-all group active:scale-95"
                             >
-                                <i className="fa-solid fa-house mr-3 text-theme-500 group-hover:text-theme-600 transition-colors"></i> 
+                                <i className="fa-solid fa-house mr-3 text-nature-500 group-hover:text-nature-600 transition-colors"></i> 
                                 <span className="text-lg">返回月曆主頁</span>
                             </button>
                         </div>
                     </div>
                 );
             };
-            
+
+            if (error) return (
+                <div className="flex-grow flex flex-col items-center justify-center text-red-600 bg-red-50 p-6 text-center">
+                    <i className="fa-solid fa-triangle-exclamation text-5xl mb-4"></i>
+                    <p className="font-bold text-xl mb-2">無法載入系統</p>
+                    <p className="text-gray-600">{error}</p>
+                </div>
+            );
+
             return (
                 <>
                     <AuthModal />
@@ -915,8 +917,8 @@
                     <header className="bg-white/70 backdrop-blur-md border-b border-white/50 shadow-sm sticky top-0 z-40">
                         <div className="max-w-5xl mx-auto px-4 py-4 md:py-5 flex justify-between items-center gap-2">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-theme-600 rounded-lg flex items-center justify-center text-white shadow-md transform -rotate-3 cursor-pointer" onClick={()=>setView('calendar')}><i className="fa-solid fa-cross text-xl"></i></div>
-                                <div><h1 className="text-xl md:text-2xl font-bold text-theme-900 tracking-tight">{SITE_CONFIG.titleLine2}</h1></div>
+                                <div className="w-10 h-10 bg-nature-600 rounded-lg flex items-center justify-center text-white shadow-md transform -rotate-3 cursor-pointer" onClick={()=>setView('calendar')}><i className="fa-solid fa-cross text-xl"></i></div>
+                                <div><h1 className="text-xl md:text-2xl font-bold text-nature-900 tracking-tight">{SITE_CONFIG.titleLine2}</h1></div>
                             </div>
                             
                             {fb && (
@@ -929,10 +931,9 @@
                                             </button>
                                             <div className="absolute right-0 mt-2 w-36 bg-white rounded-xl shadow-lg border border-gray-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                                                 {userProfile?.role === 'admin' && view !== 'admin-dashboard' && (
-                                                    <button onClick={()=>setView('admin-dashboard')} className="w-full text-left px-4 py-3 text-sm text-theme-700 hover:bg-theme-50 font-bold border-b"><i className="fa-solid fa-server mr-2"></i> 進入後台</button>
+                                                    <button onClick={()=>setView('admin-dashboard')} className="w-full text-left px-4 py-3 text-sm text-nature-700 hover:bg-nature-50 font-bold border-b"><i className="fa-solid fa-server mr-2"></i> 進入後台</button>
                                                 )}
-                                               <button onClick={()=>{ 
-                                                    // 💡 專家優化：在點擊登出的「瞬間」立刻同步清空所有前端狀態，切斷時間差
+                                                <button onClick={()=>{ 
                                                     setCompleted([]); 
                                                     setCurrentUser(null);
                                                     setUserProfile(null);
@@ -942,8 +943,8 @@
                                             </div>
                                         </div>
                                     ) : (
-                                        <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-2 bg-white border border-theme-200 hover:border-theme-400 text-theme-600 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-sm transition-all active:scale-95">
-                                            <i className="fa-solid fa-cloud-arrow-up"></i> <span className="hidden md:inline">登記 / 同步</span>
+                                        <button onClick={() => setShowAuthModal(true)} className="flex items-center gap-2 bg-white border border-nature-200 hover:border-nature-400 text-nature-600 px-3 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-sm transition-all active:scale-95">
+                                            <i className="fa-solid fa-cloud-arrow-up"></i> <span className="hidden md:inline">登入 / 註冊</span>
                                         </button>
                                     )}
                                 </div>
@@ -951,7 +952,20 @@
                         </div>
                     </header>
 
-                    <main className="flex-grow py-8 px-4 w-full">
+                    {/* 💡 專家優化：匯入參考設計的超質感視覺標題 */}
+                    {view === 'calendar' && (
+                        <div className="bg-gradient-to-br from-nature-800 to-nature-600 text-white py-10 px-4 shadow-xl text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                                <i className="fa-solid fa-seedling text-[15rem] -ml-10 -mt-10"></i>
+                            </div>
+                            <h1 className="text-3xl md:text-5xl font-bold mb-2 relative z-10 tracking-tight">{SITE_CONFIG.titleLine1}</h1>
+                            <h1 className="text-3xl md:text-5xl font-bold mb-2 relative z-10 tracking-tight">{SITE_CONFIG.titleLine2}</h1>
+                            <p className="text-xl md:text-2xl font-serif italic text-nature-200 mb-4 relative z-10 mt-4">{SITE_CONFIG.subtitle}</p>
+                            <p className="text-nature-100 opacity-90 relative z-10 font-medium">{SITE_CONFIG.description}</p>
+                        </div>
+                    )}
+
+                    <main className="flex-grow py-8 px-4 w-full bg-nature-50/30">
                         {view === 'admin-dashboard' && userProfile?.role === 'admin' ? (
                             <AdminDashboard />
                         ) : view === 'reader' && selectedDate ? (
@@ -961,11 +975,11 @@
                         )}
                     </main>
 
-                    <footer className="py-8 bg-theme-900 text-center text-theme-300 text-[10px] md:text-xs tracking-widest mt-auto">
+                    <footer className="py-10 bg-white border-t border-nature-100 text-center text-gray-400 text-[10px] tracking-widest uppercase mt-auto">
                         <p className="mb-2"><i className="fa-solid fa-seedling mr-2"></i>{SITE_CONFIG.description}</p>
                         <div className="flex justify-center items-center gap-4 opacity-50 hover:opacity-100 transition">
                             <p>{SITE_CONFIG.footerText}</p>
-                            {!currentUser && <button onClick={() => setShowAdminLogin(true)} className="text-theme-400 hover:text-white" title="管理員登入"><i className="fa-solid fa-lock"></i></button>}
+                            {!currentUser && <button onClick={() => setShowAdminLogin(true)} className="text-nature-400 hover:text-nature-600" title="管理員登入"><i className="fa-solid fa-lock"></i></button>}
                         </div>
                     </footer>
                 </>
